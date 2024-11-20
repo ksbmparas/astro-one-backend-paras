@@ -1,0 +1,26 @@
+{
+  "CallSid": "715e396f9411ab6286f93b53e9c218bg",
+  "EventType": "terminal",
+  "DateCreated": "2024-11-16 12:10:54",
+  "DateUpdated": "2024-11-16 12:11:27",
+  "Status": "completed",
+  "To": "09717919135",
+  "From": "08826895099",
+  "PhoneNumberSid": "01140846705",
+  "StartTime": "2024-11-16 12:10:54",
+  "EndTime": "2024-11-16 12:11:27",
+  "EventTime": "2024-11-16 12:11:27",
+  "Direction": "outbound-api",
+  "RecordingUrl": "",
+  "ConversationDuration": 7,
+  "Legs": [
+    {
+      "OnCallDuration": 22,
+      "Status": "completed"
+    },
+    {
+      "OnCallDuration": 7,
+      "Status": "completed"
+    }
+  ]
+}
