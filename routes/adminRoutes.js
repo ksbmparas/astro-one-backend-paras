@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-
+const configureMulter = require("../configureMulter");
 const adminController = require('../controllers/adminController');
 
 router.post('/skill', adminController.skill);
@@ -279,5 +279,13 @@ router.post('/approve_withdraw_request', adminController.approveWithdrawRequest)
 
 
 // rahul 
-// router.post('/post_pooja' , adminController.addImageAndTitle);
+const upload = configureMulter('uploads/images', [
+    { name: 'image', maxCount: 1 }, 
+  ]);  
+// Route to upload an image and title
+router.post('/post', upload, adminController.PujaSectionCreatePost);
+router.get('/get_data', adminController.PujaSectionGetAllPosts);
+router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
+router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
+router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
 module.exports = router;

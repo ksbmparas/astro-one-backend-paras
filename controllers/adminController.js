@@ -69,11 +69,9 @@ const saltRounds = 10;
 const { body, validationResult } = require('express-validator');
 const AstrologerFollower = require("../models/astrologerModel/AstrologerFollower");
 const About = require('../models/adminModel/About');
-const Puja = require('../models/adminModel/pujaSection');
-// const multer = require('multer');
-const uploadPuja = multer({ dest: 'uploads/pujaImages/' }); 
+const Post = require('../models/adminModel/pujaSection');
 
-const uploadMiddleware = configureMulter("uploads/images", [{ name: "image", maxCount: 1 }]);
+// const multer = require('multer');
 
 // add Skill
 const uploadSkill = configureMulter("uploads/skillsImage/", [
@@ -10667,9 +10665,6 @@ exports.addDeductCustomerWallet = async (req, res) => {
   }
 };
 
-
-
-
 exports.addDeductAstrologerWallet = async (req, res)=>{
   try {
     const { transactions, type } = req.body;
@@ -10839,56 +10834,157 @@ catch(error){
 
 }
 
-// // const configureMulter = require("../utils/multerConfig"); // Path to multerConfig file
-// const ImageModel = require("../models/adminModel/pujaSection"); // Replace with your MongoDB model
+exports.PujaSectionCreatePost = async (req, res) => {
+  try {
+    const { title } = req.body;
 
-// // Configure Multer middleware for image upload
-// exports.addImageAndTitle = async (req, res) => {
-//   try {
-//     // Use Multer middleware to handle file upload
-//     uploadMiddleware(req, res, async () => {
-//       const { title } = req.body; // Extract title from request body
+    if (!title) {
+      return res.status(400).json({ success: false, message: 'Title is required' });
+    }
 
-//       // Validate title
-//       if (!title || title.trim() === "") {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Title is required!",
-//         });
-//       }
+    if (!req.files || !req.files['image']) {
+      return res.status(400).json({ success: false, message: 'Image is required' });
+    }
 
-//       // Validate image upload
-//       if (!req.files || !req.files.image || req.files.image.length === 0) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Image is required!",
-//         });
-//       }
+    const post = new Post({
+      title: title,
+      image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'), // Normalize the image path
+    });
 
-//       // Extract image path
-//       const imagePath = req.files.image[0].path.replace(/\\/g, "/"); // Normalize file path for cross-platform compatibility
+    await post.save();
 
-//       // Save the image and title to the database
-//       const newImageEntry = new ImageModel({
-//         title: title.trim(),
-//         imagePath,
-//       });
+    res.status(201).json({
+      success: true,
+      message: 'Post created successfully',
+      data: post,
+    });
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
 
-//       await newImageEntry.save();
+exports.PujaSectionGetAllPosts = async (req, res) => {
+  try {
+    const posts = await Post.find(); // Fetch all posts from the database
 
-//       // Respond with success
-//       return res.status(201).json({
-//         success: true,
-//         message: "Image and title added successfully!",
-//         data: newImageEntry,
-//       });
-//     });
-//   } catch (error) {
-//     // Handle server errors
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error.",
-//       error: error.message,
-//     });
-//   }
-// };
+    // Send success response
+    res.status(200).json({
+      success: true,
+      data: posts,
+    });
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
+
+exports.PujaSectionUpdatePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { title } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ success: false, message: 'Invalid post ID' });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    if (title) {
+      post.title = title;
+    }
+
+    if (req.files && req.files['image']) {
+      post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
+    }
+
+    await post.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Post updated successfully',
+      data: post,
+    });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
+
+exports.PujaSectionGetPostById = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    console.log("Post ID:", postId);
+
+    // Validate if postId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ success: false, message: 'Invalid post ID' });
+    }
+
+    // Find the post by ID
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: post,
+    });
+  } catch (error) {
+    console.error('Error fetching post by ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
+
+
+exports.PujaSectionDeletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    console.log("Post ID:", postId);
+
+    // Validate if postId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ success: false, message: 'Invalid post ID' });
+    }
+
+    // Find and delete the post by ID
+    const post = await Post.findByIdAndDelete(postId);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Post deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
