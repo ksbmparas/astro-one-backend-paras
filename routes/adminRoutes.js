@@ -288,4 +288,12 @@ router.get('/get_data', adminController.PujaSectionGetAllPosts);
 router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
 router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
 router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
+
+router.post('/create_category', adminController.createCategory);
+router.get('/get_categories', adminController.getAllCategories);
+router.put('/update_category/:categoryId', adminController.updateCategory);
+router.delete('/delete_category/:categoryId', adminController.deleteCategory);
+
+// Routes for Subcategories
+router.post('/create_subcategory', adminController.createSubcategory);
 module.exports = router;

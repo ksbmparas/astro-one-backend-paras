@@ -1,18 +1,28 @@
 const mongoose = require('mongoose');
 
-// Define the Post schema
-const postSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: [true, 'Title is required'],
-    },
-    image: {
-      type: String,
-      required: [true, 'Image path is required'],
-    },
+const postSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
   },
-  { timestamps: true } 
-);
+  image: {
+    type: String,
+    required: true,
+  },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'pujaSectionCategory',
+    required: true,
+  },
+  subcategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'pujaSectionSubCategory',
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
 module.exports = mongoose.model('Post', postSchema);

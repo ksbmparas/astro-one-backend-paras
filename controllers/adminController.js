@@ -70,6 +70,8 @@ const { body, validationResult } = require('express-validator');
 const AstrologerFollower = require("../models/astrologerModel/AstrologerFollower");
 const About = require('../models/adminModel/About');
 const Post = require('../models/adminModel/pujaSection');
+const Category = require('../models/adminModel/pujaSectionCategory'); 
+const Subcategory = require('../models/adminModel/pujaSectionSubCategory'); 
 
 // const multer = require('multer');
 
@@ -10834,157 +10836,381 @@ catch(error){
 
 }
 
+// exports.PujaSectionCreatePost = async (req, res) => {
+//   try {
+//     const { title } = req.body;
+
+//     if (!title) {
+//       return res.status(400).json({ success: false, message: 'Title is required' });
+//     }
+
+//     if (!req.files || !req.files['image']) {
+//       return res.status(400).json({ success: false, message: 'Image is required' });
+//     }
+
+//     const post = new Post({
+//       title: title,
+//       image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'), // Normalize the image path
+//     });
+
+//     await post.save();
+
+//     res.status(201).json({
+//       success: true,
+//       message: 'Post created successfully',
+//       data: post,
+//     });
+//   } catch (error) {
+//     console.error('Error creating post:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error',
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+// exports.PujaSectionGetAllPosts = async (req, res) => {
+//   try {
+//     const posts = await Post.find(); // Fetch all posts from the database
+
+//     // Send success response
+//     res.status(200).json({
+//       success: true,
+//       data: posts,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching posts:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error',
+//       error: error.message,
+//     });
+//   }
+// };
+
+// exports.PujaSectionUpdatePost = async (req, res) => {
+//   try {
+//     const { postId } = req.params;
+//     const { title } = req.body;
+
+//     if (!mongoose.Types.ObjectId.isValid(postId)) {
+//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
+//     }
+
+//     const post = await Post.findById(postId);
+//     if (!post) {
+//       return res.status(404).json({ success: false, message: 'Post not found' });
+//     }
+
+//     if (title) {
+//       post.title = title;
+//     }
+
+//     if (req.files && req.files['image']) {
+//       post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
+//     }
+
+//     await post.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: 'Post updated successfully',
+//       data: post,
+//     });
+//   } catch (error) {
+//     console.error('Error updating post:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error',
+//       error: error.message,
+//     });
+//   }
+// };
+
+// exports.PujaSectionGetPostById = async (req, res) => {
+//   try {
+//     const { postId } = req.params;
+//     console.log("Post ID:", postId);
+
+//     // Validate if postId is a valid MongoDB ObjectId
+//     if (!mongoose.Types.ObjectId.isValid(postId)) {
+//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
+//     }
+
+//     // Find the post by ID
+//     const post = await Post.findById(postId);
+
+//     if (!post) {
+//       return res.status(404).json({ success: false, message: 'Post not found' });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       data: post,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching post by ID:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error',
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+// exports.PujaSectionDeletePost = async (req, res) => {
+//   try {
+//     const { postId } = req.params;
+//     console.log("Post ID:", postId);
+
+//     // Validate if postId is a valid MongoDB ObjectId
+//     if (!mongoose.Types.ObjectId.isValid(postId)) {
+//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
+//     }
+
+//     // Find and delete the post by ID
+//     const post = await Post.findByIdAndDelete(postId);
+
+//     if (!post) {
+//       return res.status(404).json({ success: false, message: 'Post not found' });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: 'Post deleted successfully',
+//     });
+//   } catch (error) {
+//     console.error('Error deleting post:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error',
+//       error: error.message,
+//     });
+//   }
+// };
 exports.PujaSectionCreatePost = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, category, subcategory } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ success: false, message: 'Title is required' });
-    }
-
-    if (!req.files || !req.files['image']) {
-      return res.status(400).json({ success: false, message: 'Image is required' });
+    if (!title || !category || !subcategory || !req.files['image']) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
     const post = new Post({
-      title: title,
-      image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'), // Normalize the image path
+      title,
+      category,
+      subcategory,
+      image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'),
     });
-
+    
     await post.save();
 
-    res.status(201).json({
-      success: true,
-      message: 'Post created successfully',
-      data: post,
-    });
+    res.status(201).json({ success: true, data: post });
   } catch (error) {
     console.error('Error creating post:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+
 exports.PujaSectionGetAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find(); // Fetch all posts from the database
-
-    // Send success response
-    res.status(200).json({
-      success: true,
-      data: posts,
-    });
+    const posts = await Post.find().populate('category subcategory');
+    res.status(200).json({ success: true, data: posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+exports.PujaSectionGetPostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id).populate('category subcategory');
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.status(200).json({ success: true, data: post });
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
 exports.PujaSectionUpdatePost = async (req, res) => {
   try {
-    const { postId } = req.params;
-    const { title } = req.body;
+    const { id } = req.params;
+    const { title, category, subcategory } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      return res.status(400).json({ success: false, message: 'Invalid post ID' });
+    if (!title || !category || !subcategory) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
-    const post = await Post.findById(postId);
+    const post = await Post.findById(id);
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    if (title) {
-      post.title = title;
-    }
+    post.title = title;
+    post.category = category;
+    post.subcategory = subcategory;
 
+    // Update image if a new file is uploaded
     if (req.files && req.files['image']) {
       post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
     }
 
     await post.save();
 
-    res.status(200).json({
-      success: true,
-      message: 'Post updated successfully',
-      data: post,
-    });
+    res.status(200).json({ success: true, data: post });
   } catch (error) {
     console.error('Error updating post:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
-
-exports.PujaSectionGetPostById = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    console.log("Post ID:", postId);
-
-    // Validate if postId is a valid MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      return res.status(400).json({ success: false, message: 'Invalid post ID' });
-    }
-
-    // Find the post by ID
-    const post = await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({ success: false, message: 'Post not found' });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: post,
-    });
-  } catch (error) {
-    console.error('Error fetching post by ID:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
-  }
-};
-
 
 exports.PujaSectionDeletePost = async (req, res) => {
   try {
-    const { postId } = req.params;
-    console.log("Post ID:", postId);
+    const { id } = req.params;
 
-    // Validate if postId is a valid MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      return res.status(400).json({ success: false, message: 'Invalid post ID' });
-    }
-
-    // Find and delete the post by ID
-    const post = await Post.findByIdAndDelete(postId);
+    const post = await Post.findById(id);
 
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Post deleted successfully',
-    });
+    await post.remove();
+
+    res.status(200).json({ success: true, message: 'Post deleted successfully' });
   } catch (error) {
     console.error('Error deleting post:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+// Create a Category
+exports.createCategory = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Category name is required' });
+    }
+
+    const category = new Category({ name });
+    await category.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Category created successfully',
+      data: category,
     });
+  } catch (error) {
+    console.error('Error creating category:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Create a Subcategory
+exports.createSubcategory = async (req, res) => {
+  try {
+    const { name, categoryId } = req.body;
+
+    if (!name || !categoryId) {
+      return res.status(400).json({ success: false, message: 'Subcategory name and categoryId are required' });
+    }
+
+    const category = await Category.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    const subcategory = new Subcategory({ name, category: categoryId });
+    await subcategory.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Subcategory created successfully',
+      data: subcategory,
+    });
+  } catch (error) {
+    console.error('Error creating subcategory:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Get all Categories with Subcategories
+exports.getAllCategories = async (req, res) => {
+  try {
+    const categories = await Category.find().populate('subcategories'); // Assumes subcategories are referenced in Category model
+
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error('Error fetching categories:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Update a Category
+exports.updateCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name } = req.body;
+
+    const category = await Category.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    if (name) {
+      category.name = name;
+    }
+
+    await category.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Category updated successfully',
+      data: category,
+    });
+  } catch (error) {
+    console.error('Error updating category:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Delete a Category
+exports.deleteCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    const category = await Category.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    await category.remove();
+
+    res.status(200).json({
+      success: true,
+      message: 'Category deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting category:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };
