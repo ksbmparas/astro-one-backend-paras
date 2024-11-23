@@ -9,6 +9,10 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  audio:{
+    type:String,
+    required:true,
+  },
   subcategory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'pujaSubcategory', 

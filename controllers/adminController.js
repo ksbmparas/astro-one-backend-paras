@@ -10856,28 +10856,23 @@ catch(error){
 
 exports.PujaSectionCreatePost = async (req, res) => {
   try {
-    const { title, subcategory } = req.body;
+    const { title, category, subcategory , description } = req.body;
 
-    if (!title || !subcategory || !req.files['image']) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
-    }
+    const image = req.files?.image?.[0]?.path;
+    const audio = req.files?.audio?.[0]?.path;
 
-    const subcategoryExists = await Subcategory.findById(subcategory);
-    if (!subcategoryExists) {
-      return res.status(404).json({ success: false, message: 'Subcategory not found' });
-    }
-
-    const post = new Post({
+    const newPost = new Post({
       title,
-      category: subcategoryExists.category,
+      category,
       subcategory,
-      image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'),
-      description,
+      image,
+      audio,
+      description
     });
 
-    await post.save();
+    await newPost.save();
 
-    res.status(201).json({ success: true, data: post });
+    res.status(201).json({ success: true, message: 'Post created successfully', post: newPost });
   } catch (error) {
     console.error('Error creating post:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -10886,9 +10881,8 @@ exports.PujaSectionCreatePost = async (req, res) => {
 
 exports.PujaSectionGetAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find({}).populate('subcategory');
-
-    res.status(200).json({ success: true, data: posts });
+    const posts = await Post.find().populate('subcategory');
+    res.status(200).json({ success: true, posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -10898,53 +10892,15 @@ exports.PujaSectionGetAllPosts = async (req, res) => {
 exports.PujaSectionGetPostById = async (req, res) => {
   try {
     const { postId } = req.params;
-    const post = await Post.findById(postId)
-      .populate('subcategory');
+    const post = await Post.findById(postId).populate('subcategory');
 
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    res.status(200).json({ success: true, data: post });
+    res.status(200).json({ success: true, post });
   } catch (error) {
-    console.error('Error fetching post:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-exports.PujaSectionUpdatePost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const { title, subcategory } = req.body;
-
-    if (!title || !subcategory) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
-    }
-
-    const subcategoryExists = await Subcategory.findById(subcategory);
-    if (!subcategoryExists) {
-      return res.status(404).json({ success: false, message: 'Subcategory not found' });
-    }
-
-    const post = await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({ success: false, message: 'Post not found' });
-    }
-
-    post.title = title;
-    post.category = subcategoryExists.category;
-    post.subcategory = subcategory;
-
-    if (req.files && req.files['image']) {
-      post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
-    }
-
-    await post.save();
-
-    res.status(200).json({ success: true, data: post });
-  } catch (error) {
-    console.error('Error updating post:', error);
+    console.error('Error fetching post by ID:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -10952,9 +10908,9 @@ exports.PujaSectionUpdatePost = async (req, res) => {
 exports.PujaSectionDeletePost = async (req, res) => {
   try {
     const { postId } = req.params;
+    const result = await Post.deleteOne({ _id: postId });
 
-    const post = await Post.findByIdAndDelete(postId); // Deletes the document directly
-    if (!post) {
+    if (result.deletedCount === 0) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
@@ -10965,13 +10921,15 @@ exports.PujaSectionDeletePost = async (req, res) => {
   }
 };
 
-// Create a Category
 exports.createCategory = async (req, res) => {
   try {
     const { name } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, message: 'Category name is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Category name is required',
+      });
     }
 
     const category = new Category({ name });
@@ -10984,27 +10942,35 @@ exports.createCategory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating category:', error.message);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 
-// Create a Subcategory
 exports.createSubcategory = async (req, res) => {
   try {
     const { name, categoryId } = req.body;
 
     if (!name || !categoryId) {
-      return res.status(400).json({ success: false, message: 'Subcategory name and categoryId are required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Subcategory name and categoryId are required',
+      });
     }
-
     const category = await Category.findById(categoryId);
 
     if (!category) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found',
+      });
     }
-
-    const subcategory = new Subcategory({ name, category: categoryId });
+    let subcategory = new Subcategory({ name, category: categoryId });
     await subcategory.save();
+    subcategory = await subcategory.populate('category');
 
     res.status(201).json({
       success: true,
@@ -11013,11 +10979,14 @@ exports.createSubcategory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating subcategory:', error.message);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 
-// Get all Categories with Subcategories
 exports.getAllCategories = async (req, res) => {
   try {
     const categories = await Category.find().populate('subcategories'); // Assumes subcategories are referenced in Category model
@@ -11032,7 +11001,6 @@ exports.getAllCategories = async (req, res) => {
   }
 };
 
-// Update a Category
 exports.updateCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
@@ -11061,7 +11029,6 @@ exports.updateCategory = async (req, res) => {
   }
 };
 
-// Delete a Category
 exports.deleteCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;

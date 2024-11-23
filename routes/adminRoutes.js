@@ -279,16 +279,25 @@ router.post('/approve_withdraw_request', adminController.approveWithdrawRequest)
 
 
 // rahul 
-const upload = configureMulter('uploads/images', [
-    { name: 'image', maxCount: 1 }, 
-  ]);  
+// const upload = configureMulter('uploads/images', [
+//     { name: 'image', maxCount: 1 }, 
+//   ]);  
 
-router.post('/post', upload, adminController.PujaSectionCreatePost);
+// router.post('/post', upload, adminController.PujaSectionCreatePost);
+// router.get('/get_data', adminController.PujaSectionGetAllPosts);
+// router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
+// router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
+// router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
+
+const uploadFiles = configureMulter('uploads', [
+  { name: 'image', maxCount: 1 },
+  { name: 'audio', maxCount: 1 },
+]);
+
+router.post('/post', uploadFiles, adminController.PujaSectionCreatePost);
 router.get('/get_data', adminController.PujaSectionGetAllPosts);
 router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
-router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
 router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
-
 
 router.post('/create_category', adminController.createCategory);
 router.get('/get_categories', adminController.getAllCategories);
