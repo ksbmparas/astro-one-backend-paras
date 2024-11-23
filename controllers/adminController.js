@@ -72,7 +72,7 @@ const About = require('../models/adminModel/About');
 const Post = require('../models/adminModel/pujaSection');
 const Category = require('../models/adminModel/pujaSectionCategory'); 
 const Subcategory = require('../models/adminModel/pujaSectionSubCategory'); 
-
+const Mudra = require('../models/adminModel/Mudra');
 // const multer = require('multer');
 
 // add Skill
@@ -1375,18 +1375,29 @@ exports.addGift = async function (req, res) {
         .json({ success: false, message: "Error uploading file", error: err });
     }
     try {
-      const { gift, amount, description } = req.body;
+      const { gift, amount, description, type } = req.body;
+
+      // Validate input fields
       if (
         !gift ||
         !amount ||
         !description ||
+        !type ||
         !req.files ||
         !req.files["image"] ||
         req.files["image"].length === 0
       ) {
-        return res.status(200).json({
+        return res.status(400).json({
           success: false,
-          message: "All fields are required to add gift",
+          message: "All fields are required to add a gift.",
+        });
+      }
+
+      // Validate type field
+      if (![1, 2].includes(Number(type))) {
+        return res.status(400).json({
+          success: false,
+          message: "Type must be either 1 (mandir) or 2 (live).",
         });
       }
 
@@ -1399,29 +1410,36 @@ exports.addGift = async function (req, res) {
         );
       }
 
+      // Add logic based on type
+      const target = type === "1" ? "mandir" : "live";
+      console.log(`The amount will be added to the ${target}.`);
+
       const newGift = new Gift({
         gift,
         giftIcon: imagePath,
         amount,
         description,
+        type,
       });
+
       await newGift.save();
 
       res.status(200).json({
         success: true,
-        message: "Gift added successfully",
+        message: `Gift added successfully. Amount will be sent to ${target}.`,
         gift: newGift,
       });
     } catch (error) {
-      console.error("Error updating Customer:", error);
+      console.error("Error adding gift:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to create gifts.",
+        message: "Failed to create gift.",
         error: error.message,
       });
     }
   });
 };
+
 
 exports.viewGift = async function (req, res) {
   try {
@@ -10836,176 +10854,27 @@ catch(error){
 
 }
 
-// exports.PujaSectionCreatePost = async (req, res) => {
-//   try {
-//     const { title } = req.body;
-
-//     if (!title) {
-//       return res.status(400).json({ success: false, message: 'Title is required' });
-//     }
-
-//     if (!req.files || !req.files['image']) {
-//       return res.status(400).json({ success: false, message: 'Image is required' });
-//     }
-
-//     const post = new Post({
-//       title: title,
-//       image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'), // Normalize the image path
-//     });
-
-//     await post.save();
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'Post created successfully',
-//       data: post,
-//     });
-//   } catch (error) {
-//     console.error('Error creating post:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error',
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-// exports.PujaSectionGetAllPosts = async (req, res) => {
-//   try {
-//     const posts = await Post.find(); // Fetch all posts from the database
-
-//     // Send success response
-//     res.status(200).json({
-//       success: true,
-//       data: posts,
-//     });
-//   } catch (error) {
-//     console.error('Error fetching posts:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error',
-//       error: error.message,
-//     });
-//   }
-// };
-
-// exports.PujaSectionUpdatePost = async (req, res) => {
-//   try {
-//     const { postId } = req.params;
-//     const { title } = req.body;
-
-//     if (!mongoose.Types.ObjectId.isValid(postId)) {
-//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
-//     }
-
-//     const post = await Post.findById(postId);
-//     if (!post) {
-//       return res.status(404).json({ success: false, message: 'Post not found' });
-//     }
-
-//     if (title) {
-//       post.title = title;
-//     }
-
-//     if (req.files && req.files['image']) {
-//       post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
-//     }
-
-//     await post.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Post updated successfully',
-//       data: post,
-//     });
-//   } catch (error) {
-//     console.error('Error updating post:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error',
-//       error: error.message,
-//     });
-//   }
-// };
-
-// exports.PujaSectionGetPostById = async (req, res) => {
-//   try {
-//     const { postId } = req.params;
-//     console.log("Post ID:", postId);
-
-//     // Validate if postId is a valid MongoDB ObjectId
-//     if (!mongoose.Types.ObjectId.isValid(postId)) {
-//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
-//     }
-
-//     // Find the post by ID
-//     const post = await Post.findById(postId);
-
-//     if (!post) {
-//       return res.status(404).json({ success: false, message: 'Post not found' });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: post,
-//     });
-//   } catch (error) {
-//     console.error('Error fetching post by ID:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error',
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-// exports.PujaSectionDeletePost = async (req, res) => {
-//   try {
-//     const { postId } = req.params;
-//     console.log("Post ID:", postId);
-
-//     // Validate if postId is a valid MongoDB ObjectId
-//     if (!mongoose.Types.ObjectId.isValid(postId)) {
-//       return res.status(400).json({ success: false, message: 'Invalid post ID' });
-//     }
-
-//     // Find and delete the post by ID
-//     const post = await Post.findByIdAndDelete(postId);
-
-//     if (!post) {
-//       return res.status(404).json({ success: false, message: 'Post not found' });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Post deleted successfully',
-//     });
-//   } catch (error) {
-//     console.error('Error deleting post:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error',
-//       error: error.message,
-//     });
-//   }
-// };
 exports.PujaSectionCreatePost = async (req, res) => {
   try {
-    const { title, category, subcategory } = req.body;
+    const { title, subcategory } = req.body;
 
-    if (!title || !category || !subcategory || !req.files['image']) {
+    if (!title || !subcategory || !req.files['image']) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+
+    const subcategoryExists = await Subcategory.findById(subcategory);
+    if (!subcategoryExists) {
+      return res.status(404).json({ success: false, message: 'Subcategory not found' });
     }
 
     const post = new Post({
       title,
-      category,
+      category: subcategoryExists.category,
       subcategory,
       image: req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/'),
+      description,
     });
-    
+
     await post.save();
 
     res.status(201).json({ success: true, data: post });
@@ -11015,10 +10884,10 @@ exports.PujaSectionCreatePost = async (req, res) => {
   }
 };
 
-
 exports.PujaSectionGetAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find().populate('category subcategory');
+    const posts = await Post.find({}).populate('subcategory');
+
     res.status(200).json({ success: true, data: posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -11026,11 +10895,11 @@ exports.PujaSectionGetAllPosts = async (req, res) => {
   }
 };
 
-
 exports.PujaSectionGetPostById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const post = await Post.findById(id).populate('category subcategory');
+    const { postId } = req.params;
+    const post = await Post.findById(postId)
+      .populate('subcategory');
 
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
@@ -11045,24 +10914,28 @@ exports.PujaSectionGetPostById = async (req, res) => {
 
 exports.PujaSectionUpdatePost = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { title, category, subcategory } = req.body;
+    const { postId } = req.params;
+    const { title, subcategory } = req.body;
 
-    if (!title || !category || !subcategory) {
+    if (!title || !subcategory) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
-    const post = await Post.findById(id);
+    const subcategoryExists = await Subcategory.findById(subcategory);
+    if (!subcategoryExists) {
+      return res.status(404).json({ success: false, message: 'Subcategory not found' });
+    }
+
+    const post = await Post.findById(postId);
 
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     post.title = title;
-    post.category = category;
+    post.category = subcategoryExists.category;
     post.subcategory = subcategory;
 
-    // Update image if a new file is uploaded
     if (req.files && req.files['image']) {
       post.image = req.files['image'][0].path.replace(/^.*uploads[\\/]/, 'uploads/');
     }
@@ -11078,15 +10951,12 @@ exports.PujaSectionUpdatePost = async (req, res) => {
 
 exports.PujaSectionDeletePost = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { postId } = req.params;
 
-    const post = await Post.findById(id);
-
+    const post = await Post.findByIdAndDelete(postId); // Deletes the document directly
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
-
-    await post.remove();
 
     res.status(200).json({ success: true, message: 'Post deleted successfully' });
   } catch (error) {
@@ -11094,7 +10964,6 @@ exports.PujaSectionDeletePost = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
-
 
 // Create a Category
 exports.createCategory = async (req, res) => {
@@ -11212,5 +11081,99 @@ exports.deleteCategory = async (req, res) => {
   } catch (error) {
     console.error('Error deleting category:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+exports.addMudra = async (req, res) => {
+  try {
+    const { sno, gifts, credit, debited, amount } = req.body;
+    if (!sno || !gifts || amount == null || credit == null || debited == null) {
+      return res.status(400).json({ success: false, message: "All fields are required." });
+    }
+
+    const newMudra = new Mudra({ sno, gifts, credit, debited, amount });
+    await newMudra.save();
+
+    return res.status(201).json({ success: true, message: "Mudra transaction created successfully.", mudra: newMudra });
+  } catch (error) {
+    console.error("Error creating Mudra:", error);
+    return res.status(500).json({ success: false, message: "Failed to create Mudra.", error: error.message });
+  }
+};
+
+exports.getAllMudra = async (req, res) => {
+  try {
+    const mudras = await Mudra.find();
+    return res.status(200).json({ success: true, mudras });
+  } catch (error) {
+    console.error("Error fetching Mudra transactions:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch Mudra transactions.", error: error.message });
+  }
+};
+
+exports.getMudraBySno = async (req, res) => {
+  const { sno } = req.params;
+
+  try {
+    const mudra = await Mudra.findOne({ sno });
+
+    if (!mudra) {
+      return res.status(404).json({ success: false, message: "Mudra transaction not found." });
+    }
+
+    res.status(200).json({ success: true, mudra });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "An error occurred.", error: error.message });
+  }
+};
+
+
+exports.updateMudra = async (req, res) => {
+  try {
+    const { sno } = req.params;
+    const { gifts, credit, debited, amount } = req.body;
+
+    if (!gifts || amount == null || credit == null || debited == null) {
+      return res.status(400).json({ success: false, message: "All fields are required to update." });
+    }
+
+    const updatedMudra = await Mudra.findOneAndUpdate(
+      { sno },
+      { gifts, credit, debited, amount },
+      { new: true }
+    );
+
+    if (!updatedMudra) {
+      return res.status(404).json({ success: false, message: "Mudra transaction not found." });
+    }
+
+    return res.status(200).json({ success: true, message: "Mudra transaction updated successfully.", mudra: updatedMudra });
+  } catch (error) {
+    console.error("Error updating Mudra transaction:", error);
+    return res.status(500).json({ success: false, message: "Failed to update Mudra transaction.", error: error.message });
+  }
+};
+
+exports.deleteMudra = async (req, res) => {
+  try {
+    const { sno } = req.params;
+    const deletedMudra = await Mudra.findByIdAndDelete(sno);
+
+    if (!deletedMudra) {
+      return res.status(404).json({ success: false, message: `Mudra with sno ${sno} not found.` });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Mudra with sno ${sno} deleted successfully.`,
+      deletedMudra,
+    });
+  } catch (error) {
+    console.error("Error deleting Mudra:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete Mudra.",
+      error: error.message,
+    });
   }
 };

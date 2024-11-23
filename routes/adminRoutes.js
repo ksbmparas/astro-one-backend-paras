@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const configureMulter = require("../configureMulter");
 const adminController = require('../controllers/adminController');
-
+// const mudraController = require('../controllers/adminController'); // Import the controller
 router.post('/skill', adminController.skill);
 router.get('/get-skill', adminController.getAllSkills);
 router.post('/update-skill', adminController.updateSkill);
@@ -282,12 +282,13 @@ router.post('/approve_withdraw_request', adminController.approveWithdrawRequest)
 const upload = configureMulter('uploads/images', [
     { name: 'image', maxCount: 1 }, 
   ]);  
-// Route to upload an image and title
+
 router.post('/post', upload, adminController.PujaSectionCreatePost);
 router.get('/get_data', adminController.PujaSectionGetAllPosts);
 router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
 router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
 router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
+
 
 router.post('/create_category', adminController.createCategory);
 router.get('/get_categories', adminController.getAllCategories);
@@ -296,4 +297,12 @@ router.delete('/delete_category/:categoryId', adminController.deleteCategory);
 
 // Routes for Subcategories
 router.post('/create_subcategory', adminController.createSubcategory);
+
+router.post('/add_mudra', adminController.addMudra);
+router.get('/get_allMudra', adminController.getAllMudra);
+
+
+router.get('/get_Mudra/:sno', adminController.getMudraBySno);
+router.put('/update_Mudra/:sno', adminController.updateMudra);
+router.delete('/delete_Mudra/:sno', adminController.deleteMudra);
 module.exports = router;

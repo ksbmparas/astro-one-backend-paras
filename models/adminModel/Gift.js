@@ -14,6 +14,12 @@ const giftSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  type: {
+    type: Number, 
+    enum: [1, 2], 
+    required: true, 
+    message: 'Type must be either 1 or 2.'
+  },
   description: {
     type: String,
     required: true,

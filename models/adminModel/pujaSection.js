@@ -9,15 +9,13 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'pujaSectionCategory',
-    required: true,
-  },
   subcategory: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'pujaSectionSubCategory',
+    ref: 'pujaSubcategory', 
     required: true,
+  },
+  description:{
+    type:String,
   },
   createdAt: {
     type: Date,
