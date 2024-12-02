@@ -1,5 +1,6 @@
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const configureMulter = require("../configureMulter");
 const Skills = require("../models/adminModel/Skills");
@@ -73,6 +74,8 @@ const Post = require('../models/adminModel/pujaSection');
 const Category = require('../models/adminModel/pujaSectionCategory'); 
 const Subcategory = require('../models/adminModel/pujaSectionSubCategory'); 
 const Mudra = require('../models/adminModel/Mudra');
+const Temple =  require('../models/adminModel/Temple');
+const SubTemple =  require('../models/adminModel/TempleImages');
 // const multer = require('multer');
 
 // add Skill
@@ -11140,6 +11143,231 @@ exports.deleteMudra = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete Mudra.",
+      error: error.message,
+    });
+  }
+};
+
+exports.addTemple = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const image = req.files?.image?.[0].path; // Ensure the field matches the schema
+
+    if (!name || !image) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and image are required",
+      });
+    }
+
+    const newTemple = new Temple({
+      name,
+      image,
+    });
+
+    await newTemple.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Successfully Created",
+      data: newTemple,
+    });
+  } catch (error) {
+    console.error("Error in addTemple API:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+exports.getTemple = async (req, res) => {
+  try {
+    const templeData = await Temple.find();
+    return res.status(200).json({
+      success: true,
+      message: "All temple data retrieved",
+      data: templeData,
+    });
+  } catch (error) {
+    console.error("Error in getTemple API:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Error in retrieving temple data",
+    });
+  }
+};
+
+exports.getTempleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const temple = await Temple.findById(id);
+
+    if (!temple) {
+      return res.status(404).json({
+        success: false,
+        message: "Temple with this ID is not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Temple found",
+      data: temple,
+    });
+  } catch (error) {
+    console.error("Error in getTempleById API:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Error in retrieving temple by ID",
+    });
+  }
+};
+
+exports.createTemple = async (req, res) => {
+  try {
+    console.log('Uploaded files:', req.files);
+
+    if (!req.files || !req.files['image']) {
+      return res.status(400).json({ success: false, message: 'No images uploaded' });
+    }
+
+    // Ensure the file paths are correct
+    const imagePathsok = req.files['image'].map(file => file.originalname);
+    console.log('Image paths array:', Array.isArray(imagePathsok), imagePathsok);
+
+    console.log("this is the image Path ok:;:::::::::::::::- ",imagePathsok);
+    
+    const newTemple = new Temple({
+      name: req.body.name,
+      image: imagePathsok, 
+      description: req.body.description,
+    });
+    // Save the temple to the database
+    const savedTemple = await newTemple.save();
+    res.status(201).json({ success: true, data: savedTemple });
+  } catch (error) {
+    console.error('Error creating temple:', error);
+    res.status(500).json({ success: false, message: 'Error creating temple', error: error.message });
+  }
+};
+
+
+
+
+exports.getAllTemples = async (req, res) => {
+  try {
+    const temples = await SubTemple.find();
+
+    res.status(200).json({
+      success: true,
+      message: 'List of all temples.',
+      data: temples,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error while retrieving temples.',
+      error: error.message,
+    });
+  }
+};
+
+
+exports.getTempleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const temple = await SubTemple.findById(id);
+
+    if (!temple) {
+      return res.status(404).json({
+        success: false,
+        message: 'Temple not found.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Temple details retrieved.',
+      data: temple,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error while retrieving temple details.',
+      error: error.message,
+    });
+  }
+};
+
+
+exports.updateTempleDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const images = req.files.map((file) => file.path);
+
+    const temple = await SubTemple.findById(id);
+
+    if (!temple) {
+      return res.status(404).json({
+        success: false,
+        message: 'Temple not found.',
+      });
+    }
+
+    if (name) temple.name = name;
+    if (description) temple.description = description;
+    if (images.length > 0) temple.images.push(...images);
+
+    await temple.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Temple updated successfully.',
+      data: temple,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error while updating temple.',
+      error: error.message,
+    });
+  }
+};
+
+exports.removeTemple = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const temple = await SubTemple.findById(id);
+
+    if (!temple) {
+      return res.status(404).json({
+        success: false,
+        message: 'Temple not found.',
+      });
+    }
+
+    // Remove images from filesystem
+    temple.images.forEach((filePath) => {
+      const fullPath = path.join(__dirname, '..', filePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    });
+
+    await temple.remove();
+
+    res.status(200).json({
+      success: true,
+      message: 'Temple deleted successfully.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error while deleting temple.',
       error: error.message,
     });
   }

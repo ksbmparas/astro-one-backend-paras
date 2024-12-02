@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const configureMulter = require("../configureMulter");
 const adminController = require('../controllers/adminController');
+const differentMulter =  require("../config/multer");
 // const mudraController = require('../controllers/adminController'); // Import the controller
 router.post('/skill', adminController.skill);
 router.get('/get-skill', adminController.getAllSkills);
@@ -278,20 +279,15 @@ router.post('/customer_followed_list', adminController.customerFollowedList);
 router.post('/approve_withdraw_request', adminController.approveWithdrawRequest);
 
 
-// rahul 
-// const upload = configureMulter('uploads/images', [
-//     { name: 'image', maxCount: 1 }, 
-//   ]);  
 
-// router.post('/post', upload, adminController.PujaSectionCreatePost);
-// router.get('/get_data', adminController.PujaSectionGetAllPosts);
-// router.get('/get_post/:postId', adminController.PujaSectionGetPostById);
-// router.put('/update_post/:postId', upload, adminController.PujaSectionUpdatePost);
-// router.delete('/delete_data/:postId', adminController.PujaSectionDeletePost);
 
 const uploadFiles = configureMulter('uploads', [
-  { name: 'image', maxCount: 1 },
+  { name: 'image', maxCount: 5 },
   { name: 'audio', maxCount: 1 },
+]);
+
+const upload = differentMulter('uploads', [
+  { name: 'image', maxCount: 10 } 
 ]);
 
 router.post('/post', uploadFiles, adminController.PujaSectionCreatePost);
@@ -304,7 +300,7 @@ router.get('/get_categories', adminController.getAllCategories);
 router.put('/update_category/:categoryId', adminController.updateCategory);
 router.delete('/delete_category/:categoryId', adminController.deleteCategory);
 
-// Routes for Subcategories
+
 router.post('/create_subcategory', adminController.createSubcategory);
 
 router.post('/add_mudra', adminController.addMudra);
@@ -314,4 +310,21 @@ router.get('/get_allMudra', adminController.getAllMudra);
 router.get('/get_Mudra/:sno', adminController.getMudraBySno);
 router.put('/update_Mudra/:sno', adminController.updateMudra);
 router.delete('/delete_Mudra/:sno', adminController.deleteMudra);
+
+router.post("/add_temple" ,uploadFiles, adminController.addTemple);
+router.get("/get_temple" , adminController.getTemple);
+router.get("/getAll_temple/:id" , adminController.getTempleById);
+
+
+
+
+// Route to create a new temple with multiple images
+router.post('/create_subImages', upload  , adminController.createTemple);
+router.get('/getAll_subImages', adminController.getAllTemples);
+router.get('/get_subImages/:id', adminController.getTempleById);
+router.put('/update_subImages/:id', adminController.updateTempleDetails);
+router.delete('/delete_subImages/:id', adminController.removeTemple);
+
+
+
 module.exports = router;
