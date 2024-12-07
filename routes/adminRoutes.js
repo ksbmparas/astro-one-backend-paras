@@ -282,13 +282,13 @@ router.post('/approve_withdraw_request', adminController.approveWithdrawRequest)
 
 
 const uploadFiles = configureMulter('uploads', [
-  { name: 'image', maxCount: 5 },
-  { name: 'audio', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+  { name: 'music', maxCount: 1 },
 ]);
 
-const upload = differentMulter('uploads', [
-  { name: 'image', maxCount: 10 } 
-]);
+// const upload = differentMulter('uploads', [
+//   { name: 'image', maxCount: 10 } 
+// ]);
 
 router.post('/post', uploadFiles, adminController.PujaSectionCreatePost);
 router.get('/get_data', adminController.PujaSectionGetAllPosts);
@@ -314,16 +314,22 @@ router.delete('/delete_Mudra/:sno', adminController.deleteMudra);
 router.post("/add_temple" ,uploadFiles, adminController.addTemple);
 router.get("/get_temple" , adminController.getTemple);
 router.get("/getAll_temple/:id" , adminController.getTempleById);
+router.post('/temples_delete/:id', adminController.deleteTemple);
+router.post('/temple_sub_cate', uploadFiles, adminController.createTempleCategory);
+
+
 
 
 
 
 // Route to create a new temple with multiple images
-router.post('/create_subImages', upload  , adminController.createTemple);
+router.post('/create_subImages', uploadFiles  , adminController.createTemple);
 router.get('/getAll_subImages', adminController.getAllTemples);
 router.get('/get_subImages/:id', adminController.getTempleById);
 router.put('/update_subImages/:id', adminController.updateTempleDetails);
 router.delete('/delete_subImages/:id', adminController.removeTemple);
+
+
 
 
 

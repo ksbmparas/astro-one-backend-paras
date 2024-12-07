@@ -75,6 +75,7 @@ const Category = require('../models/adminModel/pujaSectionCategory');
 const Subcategory = require('../models/adminModel/pujaSectionSubCategory'); 
 const Mudra = require('../models/adminModel/Mudra');
 const Temple =  require('../models/adminModel/Temple');
+const TempleCate =  require('../models/adminModel/TempleCate');
 const SubTemple =  require('../models/adminModel/TempleImages');
 // const multer = require('multer');
 
@@ -11151,7 +11152,7 @@ exports.deleteMudra = async (req, res) => {
 exports.addTemple = async (req, res) => {
   try {
     const { name } = req.body;
-    const image = req.files?.image?.[0].path; // Ensure the field matches the schema
+    const image = req.files?.image?.[0].path;
 
     if (!name || !image) {
       return res.status(400).json({
@@ -11197,6 +11198,36 @@ exports.getTemple = async (req, res) => {
     });
   }
 };
+
+
+exports.deleteTemple = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const temple = await Temple.findById(id);
+
+    if (!temple) {
+      return res.status(404).json({
+        success: false,
+        message: "Temple not found",
+      });
+    }
+
+    await Temple.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Temple successfully deleted",
+    });
+  } catch (error) {
+    console.error("Error in deleteTemple API:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
 
 exports.getTempleById = async (req, res) => {
   try {
@@ -11372,3 +11403,41 @@ exports.removeTemple = async (req, res) => {
     });
   }
 };
+
+
+exports.createTempleCategory = async (req, res) => {
+  try {
+    const { title, description, templeId } = req.body;
+
+    const images = req.files.image ? req.files.image.map((file) => file.path) : [];
+    const selectMusic = req.files.selectMusic
+      ? req.files.selectMusic.map((file) => file.path)
+      : [];
+
+    const newCategory = new TempleCate({
+      title,
+      description,
+      templeId,
+      images, 
+      selectMusic, 
+    });
+
+    const savedCategory = await newCategory.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Category created successfully with multiple images and audio files",
+      data: savedCategory,
+    });
+  } catch (error) {
+    console.error("Error in createTempleCategory API:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Error in creating category",
+      error: error.message,
+    });
+  }
+};
+
+
+
