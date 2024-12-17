@@ -82,6 +82,9 @@ const CustomerSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    referral_code :{
+        type:String,
+    },
     referred_by: {
         type: String
     },
@@ -127,7 +130,7 @@ const CustomerSchema = mongoose.Schema({
         default: false
     },
     wallet_balance: { type: Number, default: 0 }, // Set a default value
-
+    
 }, { collection: 'Customers', timestamps: true })
 
 const Customers = mongoose.model('Customers', CustomerSchema);

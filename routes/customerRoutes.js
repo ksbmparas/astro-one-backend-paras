@@ -101,7 +101,9 @@ router.get('/redirectPhonepeWallet',customerController.redirectPhonepeWallet);
 
 // rahul
 router.get('/gifs' , customerController.gif);
-router.get('/Sanatan_gif' , customerController.SanatanTemple);
+router.get("/get_AllDarshans", customerController.getAllDarshans);
+router.get("/get_Darshan/:id", customerController.getDarshanById);
+
 
 module.exports = router;
 

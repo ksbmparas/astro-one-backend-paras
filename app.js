@@ -30,13 +30,10 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(__dirname + ""));
-
-// rahul
-app.use('/gifs', express.static(__dirname + '/public/gifs'));
-
 app.use(express.json());// Parse incoming requests with JSON payloads
 app.use(express.urlencoded({ extended: false }));
 app.use(cors('*'));
+app.use('/gifs', express.static(__dirname + '/public/gifs'));
 db();
 // // Define the API routes
 app.use("/api/customers", customerRoutes);

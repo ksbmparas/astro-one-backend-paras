@@ -42,6 +42,7 @@ const moment = require('moment');
 const { custom } = require("joi");
 const phonepeConfig = require("../config/phonepeConfig");
 const PhonepeWallet = require("../models/customerModel/PhonepeWallet");
+const Darshan = require("../models/adminModel/LiveDarshan");
 // const base64 = require('base-64');
 
 
@@ -77,105 +78,208 @@ const validateCustomerName = (customerName) => {
   return customerName;
 };
 
+// exports.customerSignup = function (req, res) {
+//   uploadCustomerSignupImage(req, res, async function (err) {
+//     if (err instanceof multer.MulterError) {
+//       return res
+//         .status(500)
+//         .json({ success: false, message: "Multer error", error: err });
+//     } else if (err) {
+//       return res
+//         .status(500)
+//         .json({ success: false, message: "Error uploading file", error: err });
+//     }
+
+//     try {
+//       // Trim spaces from each field
+//       const {
+//         customerName = "",
+//         phoneNumber = "",
+//         gender = "",
+//         // wallet = "",
+//         dateOfBirth = "",
+//         timeOfBirth = ""
+//       } = req.body;
+
+//       const validatedCustomerName = validateCustomerName(customerName);
+
+//       const trimmedFields = {
+//         customerName: validatedCustomerName,
+//         phoneNumber: phoneNumber.trim(),
+//         gender: gender.trim(),
+//         // wallet: wallet.trim(),
+//         dateOfBirth: dateOfBirth.trim(),
+//         timeOfBirth: timeOfBirth.trim()
+//       };
+
+//       // Validate required fields after trimming
+//       const missingFields = [
+//         "customerName",
+//         "phoneNumber",
+//         "gender",
+//         "dateOfBirth",
+//         "timeOfBirth",
+//         // "wallet"
+//       ].filter((field) => !trimmedFields[field]);
+
+//       if (missingFields.length > 0) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Please provide ${missingFields.join(", ")}.`,
+//         });
+//       }
+
+//       const imagePath = req.files["image"]
+//         ? req.files["image"][0].path.replace(
+//           /^.*customerImage[\\/]/,
+//           "customerImage/"
+//         )
+//         : "";
+
+
+//       // console.log(imagePath, "imagePathh")
+
+//       const existingCustomer = await Customers.findOne({ phoneNumber: trimmedFields.phoneNumber });
+
+//       if (existingCustomer) {
+//         return res.status(400).json({
+//           success: false,
+//           isSignupCompleted: 1,
+//           message: "Customer already exists.",
+//         });
+//       }
+
+//       const newCustomer = new Customers({
+//         customerName: trimmedFields.customerName,
+//         phoneNumber: trimmedFields.phoneNumber,
+//         gender: trimmedFields.gender,
+//         image: imagePath,
+//         dateOfBirth: trimmedFields.dateOfBirth,
+//         timeOfBirth: trimmedFields.timeOfBirth,
+//         wallet_balance: trimmedFields.wallet,
+//       });
+
+//       // console.log(newCustomer, "Check New Cusotmer")
+
+//       await newCustomer.save();
+
+//       res.status(201).json({
+//         success: true,
+//         isSignupCompleted: 1,
+//         message: "Customer created successfully.",
+//         data: newCustomer,
+//       });
+//     } catch (error) {
+//       console.error("Error creating customer:", error);
+//       res.status(500).json({
+//         success: false,
+//         message: "Failed to create customer.",
+//         error: error.message,
+//       });
+//     }
+//   });
+// };
+
 exports.customerSignup = function (req, res) {
   uploadCustomerSignupImage(req, res, async function (err) {
-    if (err instanceof multer.MulterError) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Multer error", error: err });
-    } else if (err) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Error uploading file", error: err });
-    }
-
-    try {
-      // Trim spaces from each field
-      const {
-        customerName = "",
-        phoneNumber = "",
-        gender = "",
-        // wallet = "",
-        dateOfBirth = "",
-        timeOfBirth = ""
-      } = req.body;
-
-      const validatedCustomerName = validateCustomerName(customerName);
-
-      const trimmedFields = {
-        customerName: validatedCustomerName,
-        phoneNumber: phoneNumber.trim(),
-        gender: gender.trim(),
-        // wallet: wallet.trim(),
-        dateOfBirth: dateOfBirth.trim(),
-        timeOfBirth: timeOfBirth.trim()
-      };
-
-      // Validate required fields after trimming
-      const missingFields = [
-        "customerName",
-        "phoneNumber",
-        "gender",
-        "dateOfBirth",
-        "timeOfBirth",
-        // "wallet"
-      ].filter((field) => !trimmedFields[field]);
-
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Please provide ${missingFields.join(", ")}.`,
-        });
+      if (err instanceof multer.MulterError) {
+          return res.status(500).json({ success: false, message: "Multer error", error: err });
+      } else if (err) {
+          return res.status(500).json({ success: false, message: "Error uploading file", error: err });
       }
 
-      const imagePath = req.files["image"]
-        ? req.files["image"][0].path.replace(
-          /^.*customerImage[\\/]/,
-          "customerImage/"
-        )
-        : "";
+      try {
+          // Trim and validate fields
+          const {
+              customerName = "",
+              phoneNumber = "",
+              gender = "",
+              dateOfBirth = "",
+              timeOfBirth = "",
+              referred_by = "",
+          } = req.body;
 
+          const trimmedFields = {
+              customerName: customerName.trim(),
+              phoneNumber: phoneNumber.trim(),
+              gender: gender.trim(),
+              dateOfBirth: dateOfBirth.trim(),
+              timeOfBirth: timeOfBirth.trim(),
+              referred_by: referred_by.trim(),
+          };
 
-      // console.log(imagePath, "imagePathh")
+          // Validate required fields
+          const missingFields = ["customerName", "phoneNumber", "gender", "dateOfBirth", "timeOfBirth"]
+              .filter(field => !trimmedFields[field]);
 
-      const existingCustomer = await Customers.findOne({ phoneNumber: trimmedFields.phoneNumber });
+          if (missingFields.length > 0) {
+              return res.status(400).json({
+                  success: false,
+                  message: `Please provide ${missingFields.join(", ")}.`,
+              });
+          }
 
-      if (existingCustomer) {
-        return res.status(400).json({
-          success: false,
-          isSignupCompleted: 1,
-          message: "Customer already exists.",
-        });
+          // Check if the customer already exists
+          const existingCustomer = await Customers.findOne({ phoneNumber: trimmedFields.phoneNumber });
+          if (existingCustomer) {
+              return res.status(400).json({
+                  success: false,
+                  isSignupCompleted: 1,
+                  message: "Customer already exists.",
+              });
+          }
+
+          // Generate unique referral code for the new customer
+          const referralCode = uuidv4();
+
+          // Handle referral bonus
+          if (trimmedFields.referred_by) {
+              const referringCustomer = await Customers.findOne({ referral_code: trimmedFields.referred_by });
+              if (referringCustomer) {
+                  referringCustomer.wallet_balance += 50; // Example: Add $50 to wallet for referral
+                  await referringCustomer.save();
+              } else {
+                  return res.status(400).json({
+                      success: false,
+                      message: "Invalid referral code.",
+                  });
+              }
+          }
+
+          // Create new customer
+          const newCustomer = new Customers({
+              customerName: trimmedFields.customerName,
+              phoneNumber: trimmedFields.phoneNumber,
+              gender: trimmedFields.gender,
+              dateOfBirth: trimmedFields.dateOfBirth,
+              timeOfBirth: trimmedFields.timeOfBirth,
+              image: req.files["image"]
+                  ? req.files["image"][0].path.replace(/^.*customerImage[\\/]/, "customerImage/")
+                  : "",
+              referral_code: referralCode, // Correctly assigning referral code
+              referred_by: trimmedFields.referred_by,
+              wallet_balance: 0, // Initial wallet balance
+          });
+
+          await newCustomer.save();
+
+          res.status(201).json({
+              success: true,
+              isSignupCompleted: 1,
+              message: "Customer created successfully.",
+              data: {
+                  ...newCustomer.toObject(), // Convert to plain object for response
+                  referral_code: referralCode, // Ensure referral code is included
+              },
+          });
+      } catch (error) {
+          console.error("Error creating customer:", error);
+          res.status(500).json({
+              success: false,
+              message: "Failed to create customer.",
+              error: error.message,
+          });
       }
-
-      const newCustomer = new Customers({
-        customerName: trimmedFields.customerName,
-        phoneNumber: trimmedFields.phoneNumber,
-        gender: trimmedFields.gender,
-        image: imagePath,
-        dateOfBirth: trimmedFields.dateOfBirth,
-        timeOfBirth: trimmedFields.timeOfBirth,
-        wallet_balance: trimmedFields.wallet,
-      });
-
-      // console.log(newCustomer, "Check New Cusotmer")
-
-      await newCustomer.save();
-
-      res.status(201).json({
-        success: true,
-        isSignupCompleted: 1,
-        message: "Customer created successfully.",
-        data: newCustomer,
-      });
-    } catch (error) {
-      console.error("Error creating customer:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to create customer.",
-        error: error.message,
-      });
-    }
   });
 };
 
@@ -291,7 +395,7 @@ exports.customerLogin = async function (req, res) {
   }
    
 
-    const otp = await generateRandomCode();
+    const otp = 1234;//await generateRandomCode();
     let customer = await Customers.findOne({ phoneNumber });
     // console.log(customer, "Check Customersssss")
 
@@ -1708,9 +1812,9 @@ exports.createRazorpayOrder = async function (req, res) {
 
     var instance = new Razorpay({
       // key_id: 'rzp_test_VbBToLHDFwSePC',
-      key_id: 'rzp_live_rkdilJf4Va5VNc',
+      key_id: 'rzp_live_oTDlfILa14R5io',
       // key_secret: 'LNTI6xXUqfnj6U7jfd4CO9Xw',
-      key_secret: 'Yti1iRH9JwKIhaNl6Itmt7Zl'
+      key_secret: 'CzEBpcn7tNkVQVk4GxkjM5DM'
     });
 
     const response = await instance.orders.create({
@@ -5721,13 +5825,12 @@ exports.redirectPhonepeWallet = async (req, res) => {
 
 
 // RAHUL 
-// src/controllers/customerController.js
 exports.gif = async (req, res) => {
   try {
     const gifs = {
       NavgrahTemple: `${req.protocol}://${req.get('host')}/gifs/NavgrahTemple.gif`,
       SanatanTemple: `${req.protocol}://${req.get('host')}/gifs/SanatanTemple.gif`,
-      Shivalya: `${req.protocol}://${req.get('host')}/gifs/ShivalyaTemple.gif`,
+      Shivalya: `${req.protocol}://${req.get('host')}/gifs/Shivalya.gif`,
       NavgrahTemple2: `${req.protocol}://${req.get('host')}/gifs/NavgrahTemple.gif`
     };
 
@@ -5745,31 +5848,43 @@ exports.gif = async (req, res) => {
   }
 };
 
-exports.SanatanTemple = async (req, res) => {
-  try {
-    const gifs = {
-      brahaspatidev: `${req.protocol}://${req.get('host')}/gifs/brahaspatidev.gif`,
-      durgamata: `${req.protocol}://${req.get('host')}/gifs/durgamata.gif`,
-      ganeshji: `${req.protocol}://${req.get('host')}/gifs/ganeshji.gif`,
-      ganeshji2: `${req.protocol}://${req.get('host')}/gifs/ganeshji2.gif`,
-      ganeshji3: `${req.protocol}://${req.get('host')}/gifs/ganeshji3.gif`,
-      khatushyam: `${req.protocol}://${req.get('host')}/gifs/khatushyam.gif`,
-      God: `${req.protocol}://${req.get('host')}/gifs/God.gif`,
-      RamLaxman: `${req.protocol}://${req.get('host')}/gifs/RamLaxman.gif`,
-      god1122: `${req.protocol}://${req.get('host')}/gifs/god1122.gif`,
-      MAALAXMIREEL2: `${req.protocol}://${req.get('host')}/gifs/MAALAXMIREEL2.gif`
-    };
+exports.getAllDarshans = async (req, res) => {
+    try {
+        const darshans = await Darshan.find();
+        res.status(200).json({
+            success: true,
+            data: darshans,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching Darshan records.",
+            error: error.message,
+        });
+    }
+};
 
-    return res.status(200).json({
-      success: true,
-      message: "GIFs fetched successfully",
-      gifs
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
+exports.getDarshanById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const darshan = await Darshan.findById(id);
+
+        if (!darshan) {
+            return res.status(404).json({
+                success: false,
+                message: "Darshan record not found.",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: darshan,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching Darshan record.",
+            error: error.message,
+        });
+    }
 };

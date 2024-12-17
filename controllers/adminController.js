@@ -1,6 +1,5 @@
 const multer = require("multer");
 const fs = require("fs");
-const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const configureMulter = require("../configureMulter");
 const Skills = require("../models/adminModel/Skills");
@@ -59,6 +58,7 @@ const AstrologerRequests = require("../models/adminModel/AstrologerRequests");
 const AppTutorials = require("../models/adminModel/AppTutorials");
 const { parseYoutubeId } = require("../utils/services");
 const AstroCompanion = require("../models/adminModel/AstroCompanion");
+const Mudra = require('../models/adminModel/Mudra');
 const LiveCalls = require("../models/adminModel/LiveCalls");
 const BlogCount = require("../models/adminModel/BlogsCount");
 const Admin = require("../models/adminModel/Admin");
@@ -70,14 +70,8 @@ const saltRounds = 10;
 const { body, validationResult } = require('express-validator');
 const AstrologerFollower = require("../models/astrologerModel/AstrologerFollower");
 const About = require('../models/adminModel/About');
-const Post = require('../models/adminModel/pujaSection');
-const Category = require('../models/adminModel/pujaSectionCategory'); 
-const Subcategory = require('../models/adminModel/pujaSectionSubCategory'); 
-const Mudra = require('../models/adminModel/Mudra');
-const Temple =  require('../models/adminModel/Temple');
-const TempleCate =  require('../models/adminModel/TempleCate');
-const SubTemple =  require('../models/adminModel/TempleImages');
-// const multer = require('multer');
+const Darshan = require('../models/adminModel/LiveDarshan');
+
 
 // add Skill
 const uploadSkill = configureMulter("uploads/skillsImage/", [
@@ -1379,29 +1373,18 @@ exports.addGift = async function (req, res) {
         .json({ success: false, message: "Error uploading file", error: err });
     }
     try {
-      const { gift, amount, description, type } = req.body;
-
-      // Validate input fields
+      const { gift, amount, description } = req.body;
       if (
         !gift ||
         !amount ||
         !description ||
-        !type ||
         !req.files ||
         !req.files["image"] ||
         req.files["image"].length === 0
       ) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
-          message: "All fields are required to add a gift.",
-        });
-      }
-
-      // Validate type field
-      if (![1, 2].includes(Number(type))) {
-        return res.status(400).json({
-          success: false,
-          message: "Type must be either 1 (mandir) or 2 (live).",
+          message: "All fields are required to add gift",
         });
       }
 
@@ -1414,36 +1397,29 @@ exports.addGift = async function (req, res) {
         );
       }
 
-      // Add logic based on type
-      const target = type === "1" ? "mandir" : "live";
-      console.log(`The amount will be added to the ${target}.`);
-
       const newGift = new Gift({
         gift,
         giftIcon: imagePath,
         amount,
         description,
-        type,
       });
-
       await newGift.save();
 
       res.status(200).json({
         success: true,
-        message: `Gift added successfully. Amount will be sent to ${target}.`,
+        message: "Gift added successfully",
         gift: newGift,
       });
     } catch (error) {
-      console.error("Error adding gift:", error);
+      console.error("Error updating Customer:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to create gift.",
+        message: "Failed to create gifts.",
         error: error.message,
       });
     }
   });
 };
-
 
 exports.viewGift = async function (req, res) {
   try {
@@ -10689,6 +10665,9 @@ exports.addDeductCustomerWallet = async (req, res) => {
   }
 };
 
+
+
+
 exports.addDeductAstrologerWallet = async (req, res)=>{
   try {
     const { transactions, type } = req.body;
@@ -10858,201 +10837,98 @@ catch(error){
 
 }
 
-exports.PujaSectionCreatePost = async (req, res) => {
+
+exports.createDarshan = async (req, res) => {
   try {
-    const { title, category, subcategory , description } = req.body;
+      const { videoLink, fromTimeOfArti, toTimeOfArti, templeName, description } = req.body;
 
-    const image = req.files?.image?.[0]?.path;
-    const audio = req.files?.audio?.[0]?.path;
-
-    const newPost = new Post({
-      title,
-      category,
-      subcategory,
-      image,
-      audio,
-      description
-    });
-
-    await newPost.save();
-
-    res.status(201).json({ success: true, message: 'Post created successfully', post: newPost });
-  } catch (error) {
-    console.error('Error creating post:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-exports.PujaSectionGetAllPosts = async (req, res) => {
-  try {
-    const posts = await Post.find().populate('subcategory');
-    res.status(200).json({ success: true, posts });
-  } catch (error) {
-    console.error('Error fetching posts:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-exports.PujaSectionGetPostById = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const post = await Post.findById(postId).populate('subcategory');
-
-    if (!post) {
-      return res.status(404).json({ success: false, message: 'Post not found' });
-    }
-
-    res.status(200).json({ success: true, post });
-  } catch (error) {
-    console.error('Error fetching post by ID:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-exports.PujaSectionDeletePost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const result = await Post.deleteOne({ _id: postId });
-
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ success: false, message: 'Post not found' });
-    }
-
-    res.status(200).json({ success: true, message: 'Post deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting post:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-exports.createCategory = async (req, res) => {
-  try {
-    const { name } = req.body;
-
-    if (!name) {
-      return res.status(400).json({
-        success: false,
-        message: 'Category name is required',
+      const newDarshan = new Darshan({
+          VideoLink: videoLink,
+          fromTimeOfArti: fromTimeOfArti || null,
+          toTimeOfArti: toTimeOfArti || null,
+          TempleName: templeName,
+          Description: description,
       });
-    }
 
-    const category = new Category({ name });
-    await category.save();
+      await newDarshan.save();
 
-    res.status(201).json({
-      success: true,
-      message: 'Category created successfully',
-      data: category,
-    });
-  } catch (error) {
-    console.error('Error creating category:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
-  }
-};
-
-exports.createSubcategory = async (req, res) => {
-  try {
-    const { name, categoryId } = req.body;
-
-    if (!name || !categoryId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Subcategory name and categoryId are required',
+      res.status(201).json({
+          success: true,
+          message: "Darshan record created successfully.",
+          data: newDarshan,
       });
-    }
-    const category = await Category.findById(categoryId);
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found',
+  } catch (error) {
+      res.status(500).json({
+          success: false,
+          message: "Error creating Darshan record.",
+          error: error.message,
       });
-    }
-    let subcategory = new Subcategory({ name, category: categoryId });
-    await subcategory.save();
-    subcategory = await subcategory.populate('category');
-
-    res.status(201).json({
-      success: true,
-      message: 'Subcategory created successfully',
-      data: subcategory,
-    });
-  } catch (error) {
-    console.error('Error creating subcategory:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
   }
 };
 
-exports.getAllCategories = async (req, res) => {
+exports.updateDarshan = async (req, res) => {
   try {
-    const categories = await Category.find().populate('subcategories'); // Assumes subcategories are referenced in Category model
+      const { id } = req.params;
+      const { videoLink, fromTimeOfArti, toTimeOfArti, templeName, description } = req.body;
 
-    res.status(200).json({
-      success: true,
-      data: categories,
-    });
+      const updatedDarshan = await Darshan.findByIdAndUpdate(
+          id,
+          {
+              VideoLink: videoLink,
+              fromTimeOfArti: fromTimeOfArti || null,
+              toTimeOfArti: toTimeOfArti || null,
+              TempleName: templeName,
+              Description: description,
+          },
+          { new: true }
+      );
+
+      if (!updatedDarshan) {
+          return res.status(404).json({
+              success: false,
+              message: "Darshan record not found.",
+          });
+      }
+
+      res.status(200).json({
+          success: true,
+          message: "Darshan record updated successfully.",
+          data: updatedDarshan,
+      });
   } catch (error) {
-    console.error('Error fetching categories:', error.message);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+      res.status(500).json({
+          success: false,
+          message: "Error updating Darshan record.",
+          error: error.message,
+      });
   }
 };
 
-exports.updateCategory = async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-    const { name } = req.body;
 
-    const category = await Category.findById(categoryId);
+exports.deleteDarshan = async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    if (!category) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
+        const deletedDarshan = await Darshan.findByIdAndDelete(id);
+
+        if (!deletedDarshan) {
+            return res.status(404).json({
+                success: false,
+                message: "Darshan record not found.",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Darshan record deleted successfully.",
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error deleting Darshan record.",
+            error: error.message,
+        });
     }
-
-    if (name) {
-      category.name = name;
-    }
-
-    await category.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Category updated successfully',
-      data: category,
-    });
-  } catch (error) {
-    console.error('Error updating category:', error.message);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
-  }
-};
-
-exports.deleteCategory = async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-
-    const category = await Category.findById(categoryId);
-
-    if (!category) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
-    }
-
-    await category.remove();
-
-    res.status(200).json({
-      success: true,
-      message: 'Category deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting category:', error.message);
-    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
-  }
 };
 
 exports.addMudra = async (req, res) => {
@@ -11148,296 +11024,3 @@ exports.deleteMudra = async (req, res) => {
     });
   }
 };
-
-exports.addTemple = async (req, res) => {
-  try {
-    const { name } = req.body;
-    const image = req.files?.image?.[0].path;
-
-    if (!name || !image) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and image are required",
-      });
-    }
-
-    const newTemple = new Temple({
-      name,
-      image,
-    });
-
-    await newTemple.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Successfully Created",
-      data: newTemple,
-    });
-  } catch (error) {
-    console.error("Error in addTemple API:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
-
-exports.getTemple = async (req, res) => {
-  try {
-    const templeData = await Temple.find();
-    return res.status(200).json({
-      success: true,
-      message: "All temple data retrieved",
-      data: templeData,
-    });
-  } catch (error) {
-    console.error("Error in getTemple API:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Error in retrieving temple data",
-    });
-  }
-};
-
-
-exports.deleteTemple = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const temple = await Temple.findById(id);
-
-    if (!temple) {
-      return res.status(404).json({
-        success: false,
-        message: "Temple not found",
-      });
-    }
-
-    await Temple.findByIdAndDelete(id);
-
-    return res.status(200).json({
-      success: true,
-      message: "Temple successfully deleted",
-    });
-  } catch (error) {
-    console.error("Error in deleteTemple API:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
-
-
-exports.getTempleById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const temple = await Temple.findById(id);
-
-    if (!temple) {
-      return res.status(404).json({
-        success: false,
-        message: "Temple with this ID is not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Temple found",
-      data: temple,
-    });
-  } catch (error) {
-    console.error("Error in getTempleById API:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Error in retrieving temple by ID",
-    });
-  }
-};
-
-exports.createTemple = async (req, res) => {
-  try {
-    console.log('Uploaded files:', req.files);
-
-    if (!req.files || !req.files['image']) {
-      return res.status(400).json({ success: false, message: 'No images uploaded' });
-    }
-
-    // Ensure the file paths are correct
-    const imagePathsok = req.files['image'].map(file => file.originalname);
-    console.log('Image paths array:', Array.isArray(imagePathsok), imagePathsok);
-
-    console.log("this is the image Path ok:;:::::::::::::::- ",imagePathsok);
-    
-    const newTemple = new Temple({
-      name: req.body.name,
-      image: imagePathsok, 
-      description: req.body.description,
-    });
-    // Save the temple to the database
-    const savedTemple = await newTemple.save();
-    res.status(201).json({ success: true, data: savedTemple });
-  } catch (error) {
-    console.error('Error creating temple:', error);
-    res.status(500).json({ success: false, message: 'Error creating temple', error: error.message });
-  }
-};
-
-
-
-
-exports.getAllTemples = async (req, res) => {
-  try {
-    const temples = await SubTemple.find();
-
-    res.status(200).json({
-      success: true,
-      message: 'List of all temples.',
-      data: temples,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error while retrieving temples.',
-      error: error.message,
-    });
-  }
-};
-
-
-exports.getTempleById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const temple = await SubTemple.findById(id);
-
-    if (!temple) {
-      return res.status(404).json({
-        success: false,
-        message: 'Temple not found.',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Temple details retrieved.',
-      data: temple,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error while retrieving temple details.',
-      error: error.message,
-    });
-  }
-};
-
-
-exports.updateTempleDetails = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description } = req.body;
-    const images = req.files.map((file) => file.path);
-
-    const temple = await SubTemple.findById(id);
-
-    if (!temple) {
-      return res.status(404).json({
-        success: false,
-        message: 'Temple not found.',
-      });
-    }
-
-    if (name) temple.name = name;
-    if (description) temple.description = description;
-    if (images.length > 0) temple.images.push(...images);
-
-    await temple.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Temple updated successfully.',
-      data: temple,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error while updating temple.',
-      error: error.message,
-    });
-  }
-};
-
-exports.removeTemple = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const temple = await SubTemple.findById(id);
-
-    if (!temple) {
-      return res.status(404).json({
-        success: false,
-        message: 'Temple not found.',
-      });
-    }
-
-    // Remove images from filesystem
-    temple.images.forEach((filePath) => {
-      const fullPath = path.join(__dirname, '..', filePath);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-    });
-
-    await temple.remove();
-
-    res.status(200).json({
-      success: true,
-      message: 'Temple deleted successfully.',
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error while deleting temple.',
-      error: error.message,
-    });
-  }
-};
-
-
-exports.createTempleCategory = async (req, res) => {
-  try {
-    const { title, description, templeId } = req.body;
-
-    const images = req.files.image ? req.files.image.map((file) => file.path) : [];
-    const selectMusic = req.files.selectMusic
-      ? req.files.selectMusic.map((file) => file.path)
-      : [];
-
-    const newCategory = new TempleCate({
-      title,
-      description,
-      templeId,
-      images, 
-      selectMusic, 
-    });
-
-    const savedCategory = await newCategory.save();
-
-    return res.status(201).json({
-      success: true,
-      message: "Category created successfully with multiple images and audio files",
-      data: savedCategory,
-    });
-  } catch (error) {
-    console.error("Error in createTempleCategory API:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Error in creating category",
-      error: error.message,
-    });
-  }
-};
-
-
-
