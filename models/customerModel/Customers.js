@@ -82,12 +82,12 @@ const CustomerSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    referral_code :{
-        type:String,
-    },
+    referral_code: { type: String, unique: true },
+
     referred_by: {
         type: String
     },
+    referral_count: { type: Number, default: 0 },
     device_type: {
         type: Number
     },

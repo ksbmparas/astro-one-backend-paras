@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 const configureMulter = require("../configureMulter");
 const Skills = require("../models/adminModel/Skills");
 const SubSkills = require("../models/adminModel/SubSkills");
+const Bhagwan = require("../models/adminModel/Bhagwan");
 const RechargePlan = require("../models/adminModel/RechargePlan");
 const mongoose = require("mongoose");
 const Expertise = require("../models/adminModel/Expertise");
@@ -10933,30 +10934,87 @@ exports.deleteDarshan = async (req, res) => {
 
 exports.addMudra = async (req, res) => {
   try {
-    const { sno, gifts, credit, debited, amount } = req.body;
-    if (!sno || !gifts || amount == null || credit == null || debited == null) {
+    const { userId, gifts, credit, debited, amount } = req.body;
+
+    // Log the incoming request
+    console.log("Request Body:", req.body);
+
+    if (!userId || !gifts) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
-    const newMudra = new Mudra({ sno, gifts, credit, debited, amount });
+    const sno = `SNO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    const newMudra = new Mudra({
+      userId, // Ensure userId is included
+      gifts,
+      credit: isNaN(credit) || credit === "" ? 0 : Number(credit),
+      debited: isNaN(debited) || debited === "" ? 0 : Number(debited),
+      amount,
+      sno,
+    });
+
     await newMudra.save();
 
-    return res.status(201).json({ success: true, message: "Mudra transaction created successfully.", mudra: newMudra });
+    return res.status(201).json({
+      success: true,
+      message: "Mudra transaction created successfully.",
+      mudra: newMudra,
+    });
   } catch (error) {
     console.error("Error creating Mudra:", error);
-    return res.status(500).json({ success: false, message: "Failed to create Mudra.", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create Mudra.",
+      error: error.message,
+    });
   }
 };
 
+
+
 exports.getAllMudra = async (req, res) => {
   try {
-    const mudras = await Mudra.find();
+    const { _id } = req.body; 
+    if (!_id) {
+      return res.status(400).json({ success: false, message: "User ID is required." });
+    }
+
+    const mudras = await Mudra.find({ _id });
     return res.status(200).json({ success: true, mudras });
   } catch (error) {
     console.error("Error fetching Mudra transactions:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch Mudra transactions.", error: error.message });
   }
 };
+
+exports.getUserBalance = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required." });
+    }
+
+    const transactions = await Mudra.find({ userId });
+
+    let totalCredit = 0;
+    let totalDebited = 0;
+
+    transactions.forEach(transaction => {
+      totalCredit += isNaN(transaction.credit) ? 0 : transaction.credit;
+      totalDebited += isNaN(transaction.debited) ? 0 : transaction.debited;
+    });
+
+    const balance = totalCredit - totalDebited;
+
+    return res.status(200).json({ success: true, balance });
+  } catch (error) {
+    console.error("Error calculating balance:", error);
+    return res.status(500).json({ success: false, message: "Failed to calculate balance.", error: error.message });
+  }
+};
+
 
 exports.getMudraBySno = async (req, res) => {
   const { sno } = req.params;
@@ -11022,5 +11080,114 @@ exports.deleteMudra = async (req, res) => {
       message: "Failed to delete Mudra.",
       error: error.message,
     });
+  }
+};
+
+
+
+
+exports.addBhagwan = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Name is required" });
+    }
+
+    // Get the uploaded main image
+    const mainImage = req.files["mainImage"]
+      ? req.files["mainImage"][0].path.replace(/^.*uploads[\\/]/, "uploads/")
+      : "";
+
+    if (!mainImage) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Main image is required" });
+    }
+
+    // Create a new Bhagwan entry
+    const newBhagwan = new Bhagwan({ name, image: mainImage });
+    await newBhagwan.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Bhagwan added successfully",
+      data: newBhagwan,
+    });
+  } catch (error) {
+    console.error("Error adding Bhagwan:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+exports.addSubImages = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const bhagwan = await Bhagwan.findById(id);
+
+    if (!bhagwan) {
+      return res.status(404).json({ success: false, message: "Bhagwan not found" });
+    }
+
+    // Get uploaded sub-images
+    const subImages = req.files["subImages"]
+      ? req.files["subImages"].map((file) => file.path.replace(/^.*uploads[\\/]/, "uploads/"))
+      : [];
+
+    if (subImages.length === 0) {
+      return res.status(400).json({ success: false, message: "No sub-images uploaded" });
+    }
+
+    // Add sub-images to the Bhagwan's subImages array
+    bhagwan.subImages.push(...subImages);
+    await bhagwan.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Sub-images added successfully",
+      data: bhagwan,
+    });
+  } catch (error) {
+    console.error("Error adding sub-images:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+exports.getBhagwan = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const bhagwan = await Bhagwan.findById(id);
+
+    if (!bhagwan) {
+      return res.status(404).json({ success: false, message: "Bhagwan not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Bhagwan details retrieved", data: bhagwan });
+  } catch (error) {
+    console.error("Error fetching Bhagwan details:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+
+exports.getAllBhagwan = async (req, res) => {
+  try {
+    // Fetch all Bhagwan entries from the database
+    const bhagwans = await Bhagwan.find();
+
+    if (!bhagwans || bhagwans.length === 0) {
+      return res.status(404).json({ success: false, message: "No Bhagwan found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "All Bhagwan details retrieved",
+      data: bhagwans,
+    });
+  } catch (error) {
+    console.error("Error fetching all Bhagwan details:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };

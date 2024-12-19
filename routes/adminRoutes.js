@@ -3,6 +3,15 @@ const router = express.Router();
 
 const adminController = require('../controllers/adminController');
 
+const configureMulter = require("../configureMulter");
+
+// Define multer configuration for Bhagwan-related uploads
+const uploadBhagwanImage = configureMulter("uploads", [
+  { name: "mainImage", maxCount: 1 }, // Updated to expect "mainImage"
+  { name: "subImages", maxCount: 10 },
+]);
+
+
 router.post('/skill', adminController.skill);
 router.get('/get-skill', adminController.getAllSkills);
 router.post('/update-skill', adminController.updateSkill);
@@ -127,6 +136,7 @@ router.post('/delete-vivahMuhurat', adminController.deleteVivahMuhurat);
 
 router.post('/add_mudra', adminController.addMudra);
 router.get('/get_allMudra', adminController.getAllMudra);
+router.post('/balance', adminController.getUserBalance);
 
 
 router.get('/get_Mudra/:sno', adminController.getMudraBySno);
@@ -190,6 +200,19 @@ router.post('/delete-announcement', adminController.deleteAnnouncement);
 router.post('/add-screenshot', adminController.addScreenshot);
 
 // router.get('/get-chat-history', adminController.getChatHistory);
+
+
+
+// Routes for Bhagwan operations
+router.post("/add-bhagwan", uploadBhagwanImage, adminController.addBhagwan);
+router.post(
+  "/add-bhagwan/:id/subimages",
+  uploadBhagwanImage,
+  adminController.addSubImages
+);
+router.get("/get-bhagwan/:id", adminController.getBhagwan);
+router.get("/get-bhagwan", adminController.getAllBhagwan);
+
 
 router.post('/add-banners', adminController.addBanners);
 router.get('/get-banners', adminController.getAllBanners);

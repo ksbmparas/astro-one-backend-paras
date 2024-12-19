@@ -180,108 +180,197 @@ const validateCustomerName = (customerName) => {
 //   });
 // };
 
+const generateReferralCode = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let referralCode = "";
+  for (let i = 0; i < 6; i++) {
+    referralCode += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return referralCode;
+};
+
 exports.customerSignup = function (req, res) {
   uploadCustomerSignupImage(req, res, async function (err) {
-      if (err instanceof multer.MulterError) {
-          return res.status(500).json({ success: false, message: "Multer error", error: err });
-      } else if (err) {
-          return res.status(500).json({ success: false, message: "Error uploading file", error: err });
+    if (err instanceof multer.MulterError || err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error uploading file.",
+        error: err.message,
+      });
+    }
+
+    try {
+      const {
+        customerName = "",
+        phoneNumber = "",
+        gender = "",
+        dateOfBirth = "",
+        timeOfBirth = "",
+        referred_by = "",
+      } = req.body;
+
+      const trimmedFields = {
+        customerName: customerName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        gender: gender.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+        timeOfBirth: timeOfBirth.trim(),
+        referred_by: referred_by.trim(),
+      };
+
+      // Check for missing fields
+      const missingFields = ["customerName", "phoneNumber", "gender", "dateOfBirth", "timeOfBirth"].filter(
+        (field) => !trimmedFields[field]
+      );
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Please provide ${missingFields.join(", ")}.`,
+        });
       }
 
-      try {
-          // Trim and validate fields
-          const {
-              customerName = "",
-              phoneNumber = "",
-              gender = "",
-              dateOfBirth = "",
-              timeOfBirth = "",
-              referred_by = "",
-          } = req.body;
-
-          const trimmedFields = {
-              customerName: customerName.trim(),
-              phoneNumber: phoneNumber.trim(),
-              gender: gender.trim(),
-              dateOfBirth: dateOfBirth.trim(),
-              timeOfBirth: timeOfBirth.trim(),
-              referred_by: referred_by.trim(),
-          };
-
-          // Validate required fields
-          const missingFields = ["customerName", "phoneNumber", "gender", "dateOfBirth", "timeOfBirth"]
-              .filter(field => !trimmedFields[field]);
-
-          if (missingFields.length > 0) {
-              return res.status(400).json({
-                  success: false,
-                  message: `Please provide ${missingFields.join(", ")}.`,
-              });
-          }
-
-          // Check if the customer already exists
-          const existingCustomer = await Customers.findOne({ phoneNumber: trimmedFields.phoneNumber });
-          if (existingCustomer) {
-              return res.status(400).json({
-                  success: false,
-                  isSignupCompleted: 1,
-                  message: "Customer already exists.",
-              });
-          }
-
-          // Generate unique referral code for the new customer
-          const referralCode = uuidv4();
-
-          // Handle referral bonus
-          if (trimmedFields.referred_by) {
-              const referringCustomer = await Customers.findOne({ referral_code: trimmedFields.referred_by });
-              if (referringCustomer) {
-                  referringCustomer.wallet_balance += 50; // Example: Add $50 to wallet for referral
-                  await referringCustomer.save();
-              } else {
-                  return res.status(400).json({
-                      success: false,
-                      message: "Invalid referral code.",
-                  });
-              }
-          }
-
-          // Create new customer
-          const newCustomer = new Customers({
-              customerName: trimmedFields.customerName,
-              phoneNumber: trimmedFields.phoneNumber,
-              gender: trimmedFields.gender,
-              dateOfBirth: trimmedFields.dateOfBirth,
-              timeOfBirth: trimmedFields.timeOfBirth,
-              image: req.files["image"]
-                  ? req.files["image"][0].path.replace(/^.*customerImage[\\/]/, "customerImage/")
-                  : "",
-              referral_code: referralCode, // Correctly assigning referral code
-              referred_by: trimmedFields.referred_by,
-              wallet_balance: 0, // Initial wallet balance
-          });
-
-          await newCustomer.save();
-
-          res.status(201).json({
-              success: true,
-              isSignupCompleted: 1,
-              message: "Customer created successfully.",
-              data: {
-                  ...newCustomer.toObject(), // Convert to plain object for response
-                  referral_code: referralCode, // Ensure referral code is included
-              },
-          });
-      } catch (error) {
-          console.error("Error creating customer:", error);
-          res.status(500).json({
-              success: false,
-              message: "Failed to create customer.",
-              error: error.message,
-          });
+      // Check if customer already exists
+      const existingCustomer = await Customers.findOne({ phoneNumber: trimmedFields.phoneNumber });
+      if (existingCustomer) {
+        return res.status(400).json({
+          success: false,
+          message: "Customer already exists.",
+        });
       }
+
+      // Handle referral code logic
+      let referringCustomer = null;
+      if (trimmedFields.referred_by) {
+        referringCustomer = await Customers.findOne({ referral_code: trimmedFields.referred_by });
+        if (!referringCustomer) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid referral code.",
+          });
+        }
+        referringCustomer.referred_users_count = (referringCustomer.referred_users_count || 0) + 1;
+        referringCustomer.referral_count = (referringCustomer.referral_count || 0) + 1; // Increment referral_count
+        await referringCustomer.save();
+      }
+
+      // Create new customer
+      const referralCode = generateReferralCode();
+      const imagePath = req.files["image"]
+        ? req.files["image"][0].path.replace(/^.*customerImage[\\/]/, "customerImage/")
+        : "customerImage/user_default.jpg";
+
+      const newCustomer = new Customers({
+        ...trimmedFields,
+        referral_code: referralCode,
+        referred_users_count: 0,
+        referral_count: 0, // Initialize referral_count for the new customer
+        image: imagePath,
+      });
+
+      await newCustomer.save();
+
+      return res.status(201).json({
+        success: true,
+        message: "Customer created successfully.",
+        data: {
+          ...newCustomer.toObject(),
+        },
+      });
+    } catch (error) {
+      console.error("Error during customer signup:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create customer.",
+        error: error.message,
+      });
+    }
   });
 };
+
+
+
+
+exports.getTopReferrals = async function (req, res) {
+  try {
+    const topReferrers = await Customers.find({ "referral_count" : { $gt: 0 } })
+      .sort({ referred_users_count: -1 })
+      .select("customerName phoneNumber referred_users_count referral_count image")
+      .limit(10);
+
+    res.status(200).json({
+      success: true,
+      message: "Top referrers retrieved successfully.",
+      data: topReferrers,
+    });
+  } catch (error) {
+    console.error("Error fetching top referrers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve top referrers.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getReferralDetails = async function (req, res) {
+  try {
+    const { referral_code } = req.body; 
+
+    if (!referral_code) {
+      return res.status(400).json({
+        success: false,
+        message: "Referral code is required.",
+      });
+    }
+
+    const referrer = await Customers.findOne({ referral_code });
+    if (!referrer) {
+      return res.status(404).json({
+        success: false,
+        message: "Referrer not found.",
+      });
+    }
+
+    const referredUsers = await Customers.find({ referred_by: referral_code })
+      .select("customerName phoneNumber login_date status createdAt")
+      .sort({ createdAt: -1 });
+
+    // Prepare the response
+    const response = {
+      referrer: {
+        customerName: referrer.customerName,
+        phoneNumber: referrer.phoneNumber,
+        referral_code: referrer.referral_code,
+        referral_count: referrer.referral_count,
+      },
+      referredUsers: referredUsers.map((user) => ({
+        customerName: user.customerName,
+        phoneNumber: user.phoneNumber,
+        loginStatus: user.login_date ? "Logged In" : "Not Logged In",
+        createdAt: user.createdAt,
+      })),
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Referral details retrieved successfully.",
+      data: response,
+    });
+  } catch (error) {
+    console.error("Error fetching referral details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch referral details.",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
 
 
 function generateRandomCode() {
@@ -334,256 +423,116 @@ function generateRandomCode() {
 
 exports.customerLogin = async function (req, res) {
   try {
-    const { phoneNumber } = req.body;
-    // Check if phoneNumber is provided
-    if (!phoneNumber) {
+    const { phoneNumber, referred_by = "" } = req.body;
+
+    const phoneNumberPattern = /^\d{10}$/;
+    if (!phoneNumber || !phoneNumberPattern.test(phoneNumber)) {
       return res.status(400).json({
         success: false,
-        message: "Please provide phoneNumber",
+        message: "Please provide a valid 10-digit phone number.",
       });
     }
 
-    // Validate the phoneNumber length and format
-    const phoneNumberPattern = /^\d{10}$/; // Regular expression to match exactly 10 digits
-    if (!phoneNumberPattern.test(phoneNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a valid 10-digit phone number",
-      });
-    }
-
-    const defaultPhoneOtp = "9319995366"
-    const defaultOtp = '1234'
-
-    if(phoneNumber == defaultPhoneOtp){
-      const customerr = await Customers.findOne({ phoneNumber });
-    // console.log(customer, "Check Customersssss")
-
-    if (customerr) {
-      const isBanned = customerr.banned_status;
-      const is_deleted = customerr.isDeleted;
-      if (isBanned) {
-        return res.status(200).json({
-          success: false,
-          status: 0,
-          message: "You are banned, Please contact admin.",
-        });
-      }
-
-      if (is_deleted === 1) {
-        return res.status(200).json({
-          success: false,
-          status: 0,
-          message: "account is deleted",
-          deleted: true
-        });
-      }
-
-      customerr.otp = defaultOtp
-      await customerr.save();
-      // sms
-      const sms = await Sms.smsOTp(phoneNumber,defaultOtp);
-      // console.log(sms, "smss")
-      return res.status(200).json({
-        success: true,
-        status: 1,
-        otp: defaultOtp,
-        phoneNumber,
-        message: "OTP provided.",
-      });
-    }
-  }
-   
-
-    const otp = 1234;//await generateRandomCode();
+    const otp = "1234"; // Static OTP for testing
     let customer = await Customers.findOne({ phoneNumber });
-    // console.log(customer, "Check Customersssss")
 
     if (customer) {
-      const isBanned = customer.banned_status;
-      const is_deleted = customer.isDeleted;
-      if (isBanned) {
-        return res.status(200).json({
+      if (customer.banned_status || customer.isDeleted) {
+        return res.status(403).json({
           success: false,
-          status: 0,
-          message: "You are banned, Please contact admin.",
+          message: customer.banned_status ? "You are banned." : "Account is deleted.",
         });
       }
-
-      if (is_deleted === 1) {
-        return res.status(200).json({
-          success: false,
-          status: 0,
-          message: "account is deleted",
-          deleted: true
-        });
-      }
-
-      customer.otp = otp
+      customer.otp = otp;
       await customer.save();
-      // sms
-      const sms = await Sms.smsOTp(phoneNumber,otp);
-      // console.log(sms, "smss")
-      return res.status(200).json({
-        success: true,
-        status: 1,
-        otp: otp,
-        phoneNumber,
-        message: "OTP provided.",
-      });
+    } else {
+      const referralCode = uuidv4();
+      customer = new Customers({ phoneNumber, otp, referral_code: referralCode, referred_by });
+      await customer.save();
+      console.log('adsfasdf', referred_by);
+      if (referred_by) {
+        const referringCustomer = await Customers.findOne({ referral_code: referred_by });
+        console.log('referred :: ', referringCustomer);
+      
+        if (referringCustomer) {
+          referringCustomer.referral_count += 1;
+          await referringCustomer.save(); // Now this will work
+        }
+      }
+      
     }
 
-    // Add new customer logic here if needed
-    // sms
+    await Sms.smsOTp(phoneNumber, otp);
 
-    if(phoneNumber == defaultPhoneOtp){
-      const customerr = await Customers.findOne({ phoneNumber });
-    // console.log(customer, "Check Customersssss")
-
-    if (customerr) {
-      const isBanned = customerr.banned_status;
-      const is_deleted = customerr.isDeleted;
-      if (isBanned) {
-        return res.status(200).json({
-          success: false,
-          status: 0,
-          message: "You are banned, Please contact admin.",
-        });
-      }
-
-      if (is_deleted === 1) {
-        return res.status(200).json({
-          success: false,
-          status: 0,
-          message: "account is deleted",
-          deleted: true
-        });
-      }
-
-      customerr.otp = defaultOtp
-      await customerr.save();
-      // sms
-      const sms = await Sms.smsOTp(phoneNumber,defaultOtp);
-      // console.log(sms, "smss")
-      return res.status(200).json({
-        success: true,
-        status: 1,
-        otp: defaultOtp,
-        phoneNumber,
-        message: "New customer added. OTP provided.",
-      });
-    }
-  }
-    const sms = await Sms.smsOTp(phoneNumber,otp)
-    // console.log(sms, "smmmmmmmmm")
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      status: 1,
-      otp: otp,
-      phoneNumber,
-      message: "New customer added. OTP provided.",
+      message: "OTP sent for login.",
+      otp,
     });
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("Error during customer login:", error);
     res.status(500).json({
       success: false,
-      message: "Login failed",
+      message: "Login failed.",
       error: error.message,
     });
   }
 };
 
 
+
 exports.verifyCustomer = async function (req, res) {
   try {
     const { phoneNumber, fcmToken, device_id } = req.body;
-    const missingFields = [];
-
-    if (!phoneNumber) {
-      missingFields.push("phoneNumber");
-    }
-    if (!fcmToken) {
-      missingFields.push("fcmToken");
-    }
-
-    if (missingFields.length > 0) {
+    // fcmToken message notification , 
+    if (!phoneNumber || !fcmToken) {
       return res.status(400).json({
         success: false,
-        message: `Please provide ${missingFields.join(", ")}.`,
+        message: "Please provide phoneNumber and fcmToken.",
       });
     }
+
     let customer = await Customers.findOne({ phoneNumber });
+
     if (customer) {
-      const deviceToken = customer?.fcmToken;
-      if (deviceToken) {
-        const notification = {
-          title: "AstroOne",
-          body: "You are logged in new device",
-        };
-        const data = {
-          title: "AstroOne",
-          body: "You are logged in new device",
-          type: "new_login",
-        };
-
-        await notificationService.sendNotification(
-          deviceToken,
-          notification,
-          data
-        );
-      }
-
       customer.fcmToken = fcmToken;
       customer.device_id = device_id;
-
       await customer.save();
 
-      // const tokenResponse = await axios.post(
-      //   'https://api.shivampredictionkundali.com/v1/users/generateToken',
-      //   {
-      //     apikey: '08d7bd28-cd1b-498f-aedd-14acbbda6c43'
-      //   },
-      //   {
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //     },
-      //     httpsAgent: new https.Agent({
-      //       rejectUnauthorized: false
-      //     })
-      //   }
-      // );
-
-      // console.log(tokenResponse.data)
+      const notification = {
+        title: "AstroOne",
+        body: "You are logged in on a new device.",
+      };
+      await notificationService.sendNotification(customer.fcmToken, notification, { type: "new_login" });
 
       return res.status(200).json({
         success: true,
         message: "Customer verified successfully.",
         customer,
-        type: 'home',
-        // token: tokenResponse?.data?.data[0]?.token
+        type: "home",
       });
-
     } else {
       customer = new Customers({
-        fcmToken,
         phoneNumber,
+        fcmToken,
         device_id,
         status: 1,
         image: "customerImage/user_default.jpg",
       });
       await customer.save();
-      return res.status(200).json({
+
+      return res.status(201).json({
         success: true,
-        message: "Customer verified successfully.",
-        customer: customer,
-        type: 'signup'
+        message: "New customer created.",
+        customer,
+        type: "signup",
       });
     }
   } catch (error) {
-    console.error("Error during customer verification:", error);
+    console.error("Error during verification:", error);
     res.status(500).json({
       success: false,
-      message: "Verification failed",
+      message: "Verification failed.",
       error: error.message,
     });
   }

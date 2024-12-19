@@ -6,6 +6,8 @@ const validateCustomer = require('../validation/customerValidation')
 const validate = require('../validation/validate');
 
 router.post('/customer-signup', customerController.customerSignup);
+router.get("/top-referrers", customerController.getTopReferrals);
+router.post("/track-referrers", customerController.getReferralDetails);
 // router.put('/update-customer-profile/:id', customerController.customerProfileUpdate);
 router.post('/customer-login', customerController.customerLogin);
 router.post('/verify-customer', customerController.verifyCustomer);
