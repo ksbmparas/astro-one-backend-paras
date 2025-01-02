@@ -11229,35 +11229,83 @@ exports.getAllBhagwan = async (req, res) => {
 };
 
 
-exports.createContent = async (req, res) => {
+exports.createOrUpdateContent = async (req, res) => {
   try {
-      console.log("Files: ", req.files);
-      console.log("Body: ", req.body);
+    console.log("Files: ", req.files);
+    console.log("Body: ", req.body);
 
-      const { title , description } = req.body;
-      const image = req.files["image"] ? req.files["image"][0].path.replace(/\\/g, "/") : null;
-      const bulkAudioUpload = req.files["bulkAudioUpload"]
-          ? req.files["bulkAudioUpload"].map((file) => file.path.replace(/\\/g, "/"))
-          : [];
-      const bulkImageUpload = req.files["bulkImageUpload"]
-          ? req.files["bulkImageUpload"].map((file) => file.path.replace(/\\/g, "/"))
-          : [];
+    const { title, description } = req.body;
 
+    if (!title) {
+      return res.status(400).json({ success: false, message: "Title is required" });
+    }
+
+    const image = req.files["image"] ? req.files["image"][0].path.replace(/\\/g, "/") : null;
+
+    const bulkAudioUpload = req.files["bulkAudioUpload"]
+      ? req.files["bulkAudioUpload"].map((file, index) => ({
+          id: `${index + 1}`,
+          url: `require('../../../assests/mp3/${file.filename}')`,
+          title: `Audio Title ${index + 1}`,
+          artist: `Artist ${index + 1}`,
+          artwork: `require('../../../assests/mp3/images/${file.filename.replace(/\.[^/.]+$/, '.png')}')`,
+        }))
+      : [];
+
+    const bulkImageUpload = req.files["bulkImageUpload"]
+      ? req.files["bulkImageUpload"].map((file) => file.path.replace(/\\/g, "/"))
+      : [];
+
+    // Check if content with the given title already exists
+    let existingContent = await Content.findOne({ title });
+
+    if (existingContent) {
+      // Update existing content
+      existingContent.description = description || existingContent.description;
+      existingContent.image = image || existingContent.image;
+
+      // Merge bulkAudioUpload and bulkImageUpload
+      existingContent.bulkAudioUpload = [
+        ...existingContent.bulkAudioUpload,
+        ...bulkAudioUpload,
+      ];
+      existingContent.bulkImageUpload = [
+        ...existingContent.bulkImageUpload,
+        ...bulkImageUpload,
+      ];
+
+      const updatedContent = await existingContent.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Content updated successfully",
+        data: updatedContent,
+      });
+    } else {
+      // Create new content
       const newContent = new Content({
-          title,
-          image,
-          description,
-          bulkAudioUpload,
-          bulkImageUpload,
+        title,
+        description,
+        image,
+        bulkAudioUpload,
+        bulkImageUpload,
       });
 
       const savedContent = await newContent.save();
-      res.status(201).json({ success: true, data: savedContent });
+
+      res.status(201).json({
+        success: true,
+        message: "Content created successfully",
+        data: savedContent,
+      });
+    }
   } catch (error) {
-      console.error("Error: ", error);
-      res.status(500).json({ success: false, message: "Error creating content", error });
+    console.error("Error: ", error);
+    res.status(500).json({ success: false, message: "Error creating or updating content", error });
   }
 };
+
+
 
 
 // Get All Content

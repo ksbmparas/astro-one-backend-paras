@@ -26,7 +26,7 @@ const upload = configureMulter("uploads", [
 
 
 // Routes
-router.post("/create-darshan", uploadContent, adminController.createContent);
+router.post("/create-darshan", uploadContent, adminController.createOrUpdateContent);
 router.get("/get-darshan", adminController.getAllContent);                  
 router.get("/getById/:id", adminController.getContentById);
 router.post('/delete-darshan/:id', adminController.deleteContentById);
