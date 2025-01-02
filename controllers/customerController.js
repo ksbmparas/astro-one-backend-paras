@@ -14,6 +14,7 @@ const Review = require("../models/adminModel/Review");
 const LinkedProfile = require("../models/customerModel/LinkedProfile");
 const RechargeWallet = require("../models/customerModel/RechargeWallet");
 const WalletTransaction = require("../models/customerModel/WalletTransaction");
+const WalletRequest = require("../models/customerModel/WalletRequest");
 const CustomerNotification = require("../models/adminModel/CustomerNotification");
 const FirstRechargeOffer = require("../models/adminModel/FirstRechargeOffer");
 const RechargePlan = require("../models/adminModel/RechargePlan");
@@ -1073,6 +1074,151 @@ exports.getWalletTransactionHistory = async function (req, res) {
     });
   }
 };
+
+exports.sendWalletRequest = async (req, res) => {
+  try {
+      const { requesterId, responderId, amount } = req.body;
+
+      // Validate inputs
+      if (!requesterId || !responderId || !amount || amount <= 0) {
+          return res.status(400).json({ success: false, message: "Invalid input data." });
+      }
+
+      if (requesterId === responderId) {
+          return res.status(400).json({ success: false, message: "Requester and responder cannot be the same." });
+      }
+
+      // Save the wallet request
+      const walletRequest = new WalletRequest({
+          requesterId,
+          responderId,
+          amount,
+      });
+
+      await walletRequest.save();
+
+      res.status(200).json({
+          success: true,
+          message: "Wallet request sent successfully.",
+          request: walletRequest,
+      });
+  } catch (error) {
+      console.error("Error sending wallet request:", error);
+      res.status(500).json({ success: false, message: "Failed to send wallet request.", error: error.message });
+  }
+};
+
+exports.respondToWalletRequest = async (req, res) => {
+  try {
+      const { requestId, response, rejectionMessage } = req.body;
+
+      if (!requestId || !["Accepted", "Rejected"].includes(response)) {
+          return res.status(400).json({ success: false, message: "Invalid input data." });
+      }
+
+      const request = await WalletRequest.findById(requestId);
+
+      if (!request) {
+          return res.status(404).json({ success: false, message: "Request not found." });
+      }
+
+      if (request.status !== "Pending") {
+          return res.status(400).json({ success: false, message: "Request has already been processed." });
+      }
+
+      if (response === "Accepted") {
+          // Fetch both users
+          const sender = await Customers.findById(request.responderId);
+          const receiver = await Customers.findById(request.requesterId);
+
+          if (!sender || !receiver) {
+              return res.status(404).json({ success: false, message: "User not found." });
+          }
+
+          if (sender.wallet_balance < request.amount) {
+              return res.status(400).json({ success: false, message: "Insufficient balance in responder's wallet." });
+          }
+
+          // Update wallet balances
+          
+          sender.wallet_balance -= request.amount;
+          receiver.wallet_balance += request.amount;
+
+          await sender.save();
+          await receiver.save();
+
+          // Log the transactions in WalletTransaction
+          const senderTransaction = new WalletTransaction({
+              customerId: sender._id,
+              type: "Debit",
+              amount: request.amount,
+              description: `Transferred ₹${request.amount} to ${receiver.customerName || "User"}`,
+          });
+
+          const receiverTransaction = new WalletTransaction({
+              customerId: receiver._id,
+              type: "Credit",
+              amount: request.amount,
+              description: `Received ₹${request.amount} from ${sender.customerName || "User"}`,
+          });
+
+          await senderTransaction.save();
+          await receiverTransaction.save();
+
+          // Update the request status
+          request.status = "Accepted";
+          await request.save();
+
+          return res.status(200).json({
+              success: true,
+              message: "Request accepted and amount transferred successfully.",
+          });
+      } else if (response === "Rejected") {
+          // Update the request as rejected
+          request.status = "Rejected";
+          request.rejectionMessage = rejectionMessage || "No reason provided.";
+          await request.save();
+
+          return res.status(200).json({
+              success: true,
+              message: "Request rejected successfully.",
+          });
+      }
+  } catch (error) {
+      console.error("Error responding to wallet request:", error);
+      res.status(500).json({ success: false, message: "Failed to process request.", error: error.message });
+  }
+};
+
+exports.getWalletRequests = async (req, res) => {
+  try {
+      const { userId } = req.params;
+
+      // Validate input
+      if (!userId) {
+          return res.status(400).json({ success: false, message: "User ID is required." });
+      }
+
+      const requests = await WalletRequest.find({
+          $or: [{ requesterId: userId }, { responderId: userId }],
+      })
+          .populate("requesterId", "customerName phoneNumber email wallet_balance")
+          .populate("responderId", "customerName phoneNumber email wallet_balance")
+          .sort({ createdAt: -1 });
+
+      res.status(200).json({
+          success: true,
+          message: "Wallet requests fetched successfully.",
+          requests,
+      });
+  } catch (error) {
+      console.error("Error fetching wallet requests:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch wallet requests.", error: error.message });
+  }
+};
+
+
+
 
 
 exports.searchCustomers = async function (req, res) {

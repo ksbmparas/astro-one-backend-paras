@@ -111,6 +111,9 @@ router.get("/get_Darshan/:id", customerController.getDarshanById);
 router.post('/gift-wallet-balance' , customerController.giftWalletBalance);
 router.post('/gift-wallet-history/:customerId' , customerController.getWalletTransactionHistory);
 router.post('/search-customer' , customerController.searchCustomers);
+router.post('/send-wallet-request' , customerController.sendWalletRequest);
+router.post('/respond-wallet-request' , customerController.respondToWalletRequest);
+router.post('/get-wallet-request/:userId' , customerController.getWalletRequests);
 
 
 module.exports = router;
