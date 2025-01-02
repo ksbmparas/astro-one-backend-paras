@@ -107,5 +107,11 @@ router.get("/get_AllDarshans", customerController.getAllDarshans);
 router.get("/get_Darshan/:id", customerController.getDarshanById);
 
 
+// send gift
+router.post('/gift-wallet-balance' , customerController.giftWalletBalance);
+router.post('/gift-wallet-history/:customerId' , customerController.getWalletTransactionHistory);
+router.post('/search-customer' , customerController.searchCustomers);
+
+
 module.exports = router;
 

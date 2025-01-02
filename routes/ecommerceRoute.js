@@ -3,6 +3,13 @@ const router = express.Router();
 
 const EcommerceController = require('../controllers/ecommerceController')
 
+
+router.post('/create_address_cart',EcommerceController.createAddressCart);
+router.post('/update_address_cart',EcommerceController.UpdateAddressCart);
+router.post('/delete_address_cart',EcommerceController.DeleteAddressCart);
+router.post('/get_address_cart', EcommerceController.GetAddressCart);
+
+
 router.post('/create_product_category', EcommerceController.createProductCategory);
 router.post('/update_product_category', EcommerceController.updateProductCategory);
 router.get('/get_product_category', EcommerceController.getProductCategory);

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const Darshan = new mongoose.Schema({
+const LiveDarshan = new mongoose.Schema({
     VideoLink: {
         type: String,
     },
@@ -20,4 +20,7 @@ const Darshan = new mongoose.Schema({
     },
 });
 
-module.exports = mongoose.model('livePuja', Darshan);
+
+const LiveDarshanLink = mongoose.model('livePuja', LiveDarshan);
+
+module.exports = LiveDarshanLink;

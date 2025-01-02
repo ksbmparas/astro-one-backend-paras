@@ -13,6 +13,7 @@ const AstrologerWallet = require("../models/astrologerModel/AstrologerWallet");
 const Review = require("../models/adminModel/Review");
 const LinkedProfile = require("../models/customerModel/LinkedProfile");
 const RechargeWallet = require("../models/customerModel/RechargeWallet");
+const WalletTransaction = require("../models/customerModel/WalletTransaction");
 const CustomerNotification = require("../models/adminModel/CustomerNotification");
 const FirstRechargeOffer = require("../models/adminModel/FirstRechargeOffer");
 const RechargePlan = require("../models/adminModel/RechargePlan");
@@ -947,11 +948,15 @@ exports.getCustomersDetail = async function (req, res) {
 //get all customer list
 exports.getAllCustomers = async function (req, res) {
   try {
-    // Fetch all Customer from the database
     const customers = await Customers.find();
 
-    // Return the list of Customer as a JSON response
-    res.status(200).json({ success: true, customers });
+    const customerCount = customers.length;
+
+    res.status(200).json({ 
+      success: true, 
+      customerCount, 
+      customers 
+    });
   } catch (error) {
     console.error("Error fetching Customers:", error);
     res.status(500).json({
@@ -961,6 +966,151 @@ exports.getAllCustomers = async function (req, res) {
     });
   }
 };
+
+
+exports.giftWalletBalance = async function (req, res) {
+  try {
+    const { senderId, receiverId, amount } = req.body;
+
+    // Validate inputs
+    if (!senderId || !receiverId || !amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid input data. Please provide senderId, receiverId, and amount greater than 0.",
+      });
+    }
+
+    const sender = await Customers.findById(senderId);
+    const receiver = await Customers.findById(receiverId);
+
+    if (!sender) {
+      return res.status(404).json({ success: false, message: "Sender not found." });
+    }
+    if (!receiver) {
+      return res.status(404).json({ success: false, message: "Receiver not found." });
+    }
+
+    if (sender.wallet_balance < amount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Insufficient balance in sender's wallet." 
+      });
+    }
+
+    sender.wallet_balance = Number(sender.wallet_balance) - Number(amount);
+    receiver.wallet_balance = Number(receiver.wallet_balance) + Number(amount);
+
+
+    await sender.save();
+    await receiver.save();
+
+    const senderTransaction = new WalletTransaction({
+      customerId: senderId,
+      type: "Debit",
+      amount,
+      description: `Gifted ₹${amount} to ${receiver.phoneNumber}`,
+    });
+    await senderTransaction.save();
+
+    const receiverTransaction = new WalletTransaction({
+      customerId: receiverId,
+      type: "Credit",
+      amount,
+      description: `Received ₹${amount} as a gift from ${sender.phoneNumber}`,
+    });
+    await receiverTransaction.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Gift transferred successfully.",
+      data: {
+        sender: {
+          id: sender._id,
+          wallet_balance: sender.wallet_balance,
+        },
+        receiver: {
+          id: receiver._id,
+          wallet_balance: receiver.wallet_balance,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error during wallet gift transfer:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while processing the wallet gift transfer.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getWalletTransactionHistory = async function (req, res) {
+  try {
+    const { customerId } = req.params;
+
+    // Validate input
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required.",
+      });
+    }
+
+    // Fetch transaction history for the customer
+    const transactions = await WalletTransaction.find({ customerId }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Transaction history fetched successfully.",
+      transactions,
+    });
+  } catch (error) {
+    console.error("Error fetching transaction history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch transaction history.",
+      error: error.message,
+    });
+  }
+};
+
+
+exports.searchCustomers = async function (req, res) {
+  try {
+    const { query } = req.query;
+
+    // Validate input
+    if (!query || query.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required.",
+      });
+    }
+
+    // Search customers by phone number, name, or email (case-insensitive)
+    const customers = await Customers.find({
+      $or: [
+        { phoneNumber: { $regex: query, $options: "i" } },
+        { customerName: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } },
+      ],
+    }).select("customerName phoneNumber email wallet_balance");
+
+    res.status(200).json({
+      success: true,
+      message: "Customer search results fetched successfully.",
+      customers,
+    });
+  } catch (error) {
+    console.error("Error searching customers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch customer search results.",
+      error: error.message,
+    });
+  }
+};
+
 
 // get customer review
 exports.getCustomersReview = async function (req, res) {

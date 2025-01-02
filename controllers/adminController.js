@@ -28,6 +28,7 @@ const AstroMagazine = require("../models/adminModel/AstroMagazine");
 const BirhatHoroscope = require("../models/adminModel/BirhatHoroscope");
 const MundanMuhurat = require("../models/adminModel/MundanMuhurat");
 const DailyPanchang = require("../models/adminModel/DailyPanchang");
+const Content = require("../models/adminModel/Darshan");
 const Remedies = require("../models/adminModel/Remedies");
 const YellowBook = require("../models/adminModel/YellowBook");
 const AuspiciousTime = require("../models/adminModel/AuspiciousTime");
@@ -37,6 +38,7 @@ const Numerology = require("../models/adminModel/Numerology");
 const Testimonial = require("../models/adminModel/Testimonal");
 const Customers = require("../models/customerModel/Customers");
 const Users = require("../models/adminModel/Users");
+const PoojaItem = require("../models/adminModel/PoojaItem");
 const Announcement = require("../models/adminModel/Announcement");
 const Message = require("../models/adminModel/Message");
 const BankAccount = require("../models/astrologerModel/BankAccount");
@@ -71,7 +73,7 @@ const saltRounds = 10;
 const { body, validationResult } = require('express-validator');
 const AstrologerFollower = require("../models/astrologerModel/AstrologerFollower");
 const About = require('../models/adminModel/About');
-const Darshan = require('../models/adminModel/LiveDarshan');
+const DarshanLink = require('../models/adminModel/LiveDarshan');
 
 
 // add Skill
@@ -10838,13 +10840,46 @@ catch(error){
 
 }
 
+exports.getAllDarshanLinks = async (req, res) => {
+  try {
+      const darshanLinks = await DarshanLink.find();
+
+      if (!darshanLinks || darshanLinks.length === 0) {
+          return res.status(404).json({
+              success: false,
+              message: "No Darshan records found.",
+          });
+      }
+
+      res.status(200).json({
+          success: true,
+          message: "Darshan records retrieved successfully.",
+          data: darshanLinks,
+      });
+  } catch (error) {
+      res.status(500).json({
+          success: false,
+          message: "Error retrieving Darshan records.",
+          error: error.message,
+      });
+  }
+};
+
 
 exports.createDarshan = async (req, res) => {
   try {
       const { videoLink, fromTimeOfArti, toTimeOfArti, templeName, description } = req.body;
 
-      const newDarshan = new Darshan({
-          VideoLink: videoLink,
+      const convertToEmbedLink = (link) => {
+          const regex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/;
+          const match = link.match(regex);
+          return match ? `https://www.youtube.com/embed/${match[1]}` : link;
+      };
+
+      const embedLink = convertToEmbedLink(videoLink); 
+
+      const newDarshan = new DarshanLink({
+          VideoLink: embedLink, 
           fromTimeOfArti: fromTimeOfArti || null,
           toTimeOfArti: toTimeOfArti || null,
           TempleName: templeName,
@@ -10867,12 +10902,13 @@ exports.createDarshan = async (req, res) => {
   }
 };
 
+
 exports.updateDarshan = async (req, res) => {
   try {
       const { id } = req.params;
       const { videoLink, fromTimeOfArti, toTimeOfArti, templeName, description } = req.body;
 
-      const updatedDarshan = await Darshan.findByIdAndUpdate(
+      const updatedDarshan = await DarshanLink.findByIdAndUpdate(
           id,
           {
               VideoLink: videoLink,
@@ -10910,7 +10946,7 @@ exports.deleteDarshan = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const deletedDarshan = await Darshan.findByIdAndDelete(id);
+        const deletedDarshan = await DarshanLink.findByIdAndDelete(id);
 
         if (!deletedDarshan) {
             return res.status(404).json({
@@ -11191,3 +11227,454 @@ exports.getAllBhagwan = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
+
+
+exports.createContent = async (req, res) => {
+  try {
+      console.log("Files: ", req.files);
+      console.log("Body: ", req.body);
+
+      const { title , description } = req.body;
+      const image = req.files["image"] ? req.files["image"][0].path.replace(/\\/g, "/") : null;
+      const bulkAudioUpload = req.files["bulkAudioUpload"]
+          ? req.files["bulkAudioUpload"].map((file) => file.path.replace(/\\/g, "/"))
+          : [];
+      const bulkImageUpload = req.files["bulkImageUpload"]
+          ? req.files["bulkImageUpload"].map((file) => file.path.replace(/\\/g, "/"))
+          : [];
+
+      const newContent = new Content({
+          title,
+          image,
+          description,
+          bulkAudioUpload,
+          bulkImageUpload,
+      });
+
+      const savedContent = await newContent.save();
+      res.status(201).json({ success: true, data: savedContent });
+  } catch (error) {
+      console.error("Error: ", error);
+      res.status(500).json({ success: false, message: "Error creating content", error });
+  }
+};
+
+
+// Get All Content
+exports.getAllContent = async (req, res) => {
+  try {
+    const contentList = await Content.find();
+    res.status(200).json({ success: true, data: contentList });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching content", error });
+  }
+};
+
+// Get Content By ID
+exports.getContentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const content = await Content.findById(id);
+    if (!content) {
+      return res.status(404).json({ success: false, message: "Content not found" });
+    }
+    res.status(200).json({ success: true, data: content });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching content by ID", error });
+  }
+};
+
+exports.deleteContentById = async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      // Find and delete the content by ID
+      const deletedContent = await Content.findByIdAndDelete(id);
+
+      if (!deletedContent) {
+          return res.status(404).json({ success: false, message: "Content not found" });
+      }
+
+      // Optional: Delete files from the server
+      const fs = require('fs');
+      const deleteFile = (filePath) => {
+          if (filePath && fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+          }
+      };
+
+      // Delete associated files
+      deleteFile(deletedContent.image);
+      deletedContent.bulkAudioUpload.forEach(deleteFile);
+      deletedContent.bulkImageUpload.forEach(deleteFile);
+
+      res.status(200).json({ success: true, message: "Content deleted successfully", data: deletedContent });
+  } catch (error) {
+      console.error("Error deleting content:", error);
+      res.status(500).json({ success: false, message: "Error deleting content", error });
+  }
+};
+
+// // Create or Add Pooja Items
+// exports.createPoojaItem = async (req, res) => {
+//   try {
+//     const { title, items } = req.body;
+
+//     // Parse items from JSON string
+//     const parsedItems = JSON.parse(items);
+
+//     // Log parsed items for debugging
+//     console.log("Parsed Items:", parsedItems);
+
+//     // Check if files were uploaded
+//     if (!req.files || !req.files.itemImages) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Item images are required.",
+//       });
+//     }
+
+//     // Get uploaded image paths
+//     const uploadedImages = req.files.itemImages.map((file) => file.path);
+
+//     // Ensure images match items count
+//     if (parsedItems.length !== uploadedImages.length) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "The number of item images must match the number of items.",
+//       });
+//     }
+
+//     // Create new items with images
+//     const newItems = parsedItems.map((item, index) => ({
+//       itemName: item.itemName,
+//       itemImage: uploadedImages[index], // Associate each image with an item
+//       itemPrice: item.itemPrice,
+//     }));
+
+//     // Check if a title already exists in the database
+//     let poojaItem = await PoojaItem.findOne({ title });
+
+//     if (poojaItem) {
+//       // Title exists, append new items to existing list
+//       poojaItem.items = [...poojaItem.items, ...newItems];
+//     } else {
+//       // Title does not exist, create a new entry
+//       poojaItem = new PoojaItem({
+//         title,
+//         items: newItems,
+//       });
+//     }
+
+//     // Save to database
+//     await poojaItem.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Pooja item created/updated successfully.",
+//       data: [poojaItem], // Wrap in an array
+//     });
+//   } catch (error) {
+//     console.error("Error creating/updating Pooja Item:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error creating/updating Pooja Item",
+//       error: error.message || error,
+//     });
+//   }
+// };
+
+
+// Create Pooja Title
+exports.createPoojaTitle = async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    // Check if the title already exists
+    const existingTitle = await PoojaItem.findOne({ title });
+    if (existingTitle) {
+      return res.status(400).json({
+        success: false,
+        message: "Title already exists. Please choose a different title.",
+      });
+    }
+
+    // Create new title without items
+    const poojaItem = new PoojaItem({ title, items: [] });
+    await poojaItem.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Pooja title created successfully.",
+      data: poojaItem,
+    });
+  } catch (error) {
+    console.error("Error creating Pooja Title:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating Pooja Title",
+      error: error.message || error,
+    });
+  }
+};
+
+
+exports.addItemsToPoojaTitle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body;
+
+    const parsedItems = JSON.parse(items);
+
+    // Check if files were uploaded
+    if (!req.files || !req.files.itemImages) {
+      return res.status(400).json({
+        success: false,
+        message: "Item images are required.",
+      });
+    }
+
+    // Get uploaded image paths and replace '\\' with '/'
+    const uploadedImages = req.files.itemImages.map((file) =>
+      file.path.replace(/\\/g, "/")
+    );
+
+    // Ensure images match items count
+    if (parsedItems.length !== uploadedImages.length) {
+      return res.status(400).json({
+        success: false,
+        message: "The number of item images must match the number of items.",
+      });
+    }
+
+    // Find the Pooja Item by ID
+    const poojaItem = await PoojaItem.findById(id);
+
+    if (!poojaItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Pooja Title not found",
+      });
+    }
+
+    // Create new items with images, payment, and title
+    const newItems = parsedItems.map((item, index) => ({
+      itemName: item.itemName,
+      itemImage: uploadedImages[index],
+      itemPrice: item.itemPrice,
+      payment: item.payment || "add",
+      title: poojaItem.title, // Add title here for each item
+    }));
+
+    // Append new items to the existing list
+    poojaItem.items = [...poojaItem.items, ...newItems];
+
+    // Save to database
+    await poojaItem.save();
+
+    // Clean response to return only required fields
+    const cleanResponse = {
+      _id: poojaItem._id,
+      title: poojaItem.title,
+      items: poojaItem.items.map((item) => ({
+        itemName: item.itemName,
+        itemImage: item.itemImage,
+        itemPrice: item.itemPrice,
+        payment: item.payment,
+        _id: item._id,
+        title: poojaItem.title,
+      })),
+      createdAt: poojaItem.createdAt,
+      updatedAt: poojaItem.updatedAt,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Items added to Pooja Title successfully.",
+      data: cleanResponse,
+    });
+  } catch (error) {
+    console.error("Error adding items to Pooja Title:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding items to Pooja Title",
+      error: error.message || error,
+    });
+  }
+};
+
+
+
+// Get All Pooja Items
+exports.getAllPoojaItems = async (req, res) => {
+  try {
+    const poojaItems = await PoojaItem.find();
+    res.status(200).json({
+      success: true,
+      data: poojaItems,
+    });
+  } catch (error) {
+    console.error("Error fetching Pooja Items:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching Pooja Items",
+      error,
+    });
+  }
+};
+
+// Get Pooja Item by ID
+exports.getPoojaItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const poojaItem = await PoojaItem.findById(id);
+
+    if (!poojaItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Pooja Item not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: poojaItem,
+    });
+  } catch (error) {
+    console.error("Error fetching Pooja Item:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching Pooja Item",
+      error,
+    });
+  }
+};
+
+// // Delete Pooja Item by ID
+// exports.deletePoojaItemById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const deletedPoojaItem = await PoojaItem.findByIdAndDelete(id);
+
+//     if (!deletedPoojaItem) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Pooja Item not found",
+//       });
+//     }
+
+//     // Optional: Delete item images from the server
+//     const fs = require("fs");
+//     deletedPoojaItem.items.forEach((item) => {
+//       if (fs.existsSync(item.itemImage)) {
+//         fs.unlinkSync(item.itemImage);
+//       }
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Pooja Item deleted successfully",
+//       data: deletedPoojaItem,
+//     });
+//   } catch (error) {
+//     console.error("Error deleting Pooja Item:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error deleting Pooja Item",
+//       error,
+//     });
+//   }
+// };
+
+
+// Delete an entire title by ID
+exports.deletePoojaTitleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find and delete the title
+    const poojaItem = await PoojaItem.findByIdAndDelete(id);
+
+    if (!poojaItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Pooja Title not found",
+      });
+    }
+
+    // Optional: Delete all item images from the server
+    const fs = require("fs");
+    poojaItem.items.forEach((item) => {
+      if (fs.existsSync(item.itemImage)) {
+        fs.unlinkSync(item.itemImage);
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Pooja Title and all associated items deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting Pooja Title:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting Pooja Title",
+      error,
+    });
+  }
+};
+
+
+// Delete a specific item from a title by title ID and item ID
+exports.deleteItemFromPoojaTitle = async (req, res) => {
+  try {
+    const { titleId, itemId } = req.params;
+
+    // Find the title by ID
+    const poojaItem = await PoojaItem.findById(titleId);
+
+    if (!poojaItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Pooja Title not found",
+      });
+    }
+
+    // Find the item within the title's items and remove it
+    const itemIndex = poojaItem.items.findIndex((item) => item._id.toString() === itemId);
+
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found within the specified Pooja Title",
+      });
+    }
+
+    // Remove the item from the list
+    const removedItem = poojaItem.items.splice(itemIndex, 1)[0];
+
+    // Optional: Delete the item's image from the server
+    const fs = require("fs");
+    if (fs.existsSync(removedItem.itemImage)) {
+      fs.unlinkSync(removedItem.itemImage);
+    }
+
+    // Save the updated title
+    await poojaItem.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Item deleted successfully from the Pooja Title",
+      data: poojaItem,
+    });
+  } catch (error) {
+    console.error("Error deleting item from Pooja Title:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting item from Pooja Title",
+      error,
+    });
+  }
+};
+

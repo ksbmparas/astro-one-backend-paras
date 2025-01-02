@@ -12,6 +12,35 @@ const uploadBhagwanImage = configureMulter("uploads", [
 ]);
 
 
+const uploadContent = configureMulter("uploads", [
+  { name: "image", maxCount: 1 },         
+  { name: "bulkAudioUpload", maxCount: 10 }, 
+  { name: "bulkImageUpload", maxCount: 10 }, 
+]);
+
+
+const upload = configureMulter("uploads", [
+  { name: "itemImages", maxCount: 10 },
+]);
+
+
+
+// Routes
+router.post("/create-darshan", uploadContent, adminController.createContent);
+router.get("/get-darshan", adminController.getAllContent);                  
+router.get("/getById/:id", adminController.getContentById);
+router.post('/delete-darshan/:id', adminController.deleteContentById);
+
+
+//pooja items
+router.post("/create-pooja-title", upload, adminController.createPoojaTitle);
+router.post("/add-items-to-pooja-title/:id", upload, adminController.addItemsToPoojaTitle);
+router.get("/get-pooja-items", adminController.getAllPoojaItems);
+router.get("/get-pooja-item/:id", adminController.getPoojaItemById);
+router.post("/delete-pooja-item/:id", adminController.deletePoojaTitleById);
+router.post("/delete-item-from-pooja-title/:titleId/:itemId", adminController.deleteItemFromPoojaTitle);
+
+
 router.post('/skill', adminController.skill);
 router.get('/get-skill', adminController.getAllSkills);
 router.post('/update-skill', adminController.updateSkill);
@@ -311,4 +340,5 @@ router.post('/approve_withdraw_request', adminController.approveWithdrawRequest)
 router.post("/add_Darshan" , adminController.createDarshan);
 router.put("/update_Darshan/:id", adminController.updateDarshan);
 router.post("/delete_Darshan/:id", adminController.deleteDarshan);
+router.get("/get_Darshan", adminController.getAllDarshanLinks);
 module.exports = router;

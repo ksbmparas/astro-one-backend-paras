@@ -2,7 +2,7 @@ const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
-function configureMulter(destinationFolder, fields) {
+function configureMulter(destinationFolder, fieldsConfig = []) {
   const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       const fileType = file.mimetype.startsWith("audio") ? "audio" : "images";
@@ -16,8 +16,8 @@ function configureMulter(destinationFolder, fields) {
 
   const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // Max file size: 50MB
-  }).fields(fields);
+    limits: { fileSize: 50 * 1024 * 1024 }, // Limit to 50 MB
+  }).fields(fieldsConfig);
 
   return function (req, res, next) {
     upload(req, res, function (err) {

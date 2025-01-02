@@ -6,6 +6,7 @@ const Product = require("../models/ecommerceModel/Product");
 const Pooja = require("../models/ecommerceModel/Pooja");
 const Customers = require("../models/customerModel/Customers");
 const CustoemrCart = require("../models/ecommerceModel/CustomerCart");
+const AddressCarts = require("../models/ecommerceModel/AddressCarts");
 const ProductOrder = require("../models/ecommerceModel/ProductOrder");
 const AstromallOrders = require("../models/ecommerceModel/AstromallOrders");
 const RechargeWallet = require("../models/customerModel/RechargeWallet");
@@ -956,7 +957,7 @@ exports.orderProduct = async function (req, res) {
 
 exports.bookPuja = async function (req, res) {
     try {
-        const {userId, pujaId,  date, time, mode } = req.body;
+        const { userId, pujaId, date, time, mode } = req.body;
 
         if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({ success: false, message: "Invalid userId" });
@@ -967,59 +968,61 @@ exports.bookPuja = async function (req, res) {
         }
 
         if (!date || !time) {
-            return res.status(400).json({ success: false, message: "all field is required" });
+            return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
-        if(!mode || mode == " "){
+        if (!mode || mode.trim() === "") {
             return res.status(400).json({
                 success: false,
-                message: 'mode is required!'
-            })
+                message: "Mode is required!",
+            });
         }
 
-        const dateA = new Date(date)
-        const dateB = new Date(time)
-
-        const year = dateA.getFullYear();
-        const month = dateA.getMonth();
-        const day = dateA.getDate();
-
-        const hours = dateB.getHours();
-        const minutes = dateB.getMinutes();
-        const seconds = dateB.getSeconds();
-
-        const combinedDateTime = new Date(year, month, day, hours, minutes, seconds);
+        // Combine date and time into a valid Date object
+        const dateA = new Date(date); // Date part
+        const [hours, minutes, seconds] = time.split(":").map(Number); // Extract time components
+        const combinedDateTime = new Date(dateA.setHours(hours, minutes, seconds));
 
         const currentDateTime = new Date();
         const timeDifference = (combinedDateTime - currentDateTime) / 1000;
         const differenceInHours = timeDifference / (60 * 60);
+
         if (differenceInHours < 5) {
-            return res.status(200).json({ success: false, message: "Time should be 5 hour greater from current time" });
+            return res.status(200).json({
+                success: false,
+                message: "Time should be 5 hours greater than the current time",
+            });
         }
 
-        const puja = await Pooja.findOne({_id: pujaId})
+        // Find the Pooja
+        const puja = await Pooja.findOne({ _id: pujaId });
+        if (!puja) {
+            return res.status(404).json({ success: false, message: "Puja not found" });
+        }
 
+        // Create a new Pooja Order
         const newPoojaOrder = new AstromallOrders({
-            customerId:userId,
-            poojaId:pujaId,
-            price:puja.price,
-            mode:mode,
+            customerId: userId,
+            poojaId: pujaId,
+            price: puja.price,
+            mode: mode,
             poojaDate: date,
-            poojaTime: time
-        })
+            poojaTime: combinedDateTime, // Pass the combined Date object here
+        });
 
-        await newPoojaOrder.save()
+        await newPoojaOrder.save();
 
         return res.status(201).json({
             success: true,
-            message: "Puja Request send successfully",
-            order: newPoojaOrder
+            message: "Puja Request sent successfully",
+            order: newPoojaOrder,
         });
 
     } catch (error) {
+        console.error("Error booking puja:", error);
         res.status(500).json({
             success: false,
-            message: "Failed to register pooja",
+            message: "Failed to register puja",
             error: error.message,
         });
     }
@@ -1829,6 +1832,113 @@ exports.getCustoemerBookedPooja = async function (req, res) {
         });
     }
 };
+
+
+
+exports.createAddressCart  = async(req,res) => {
+    try {
+        const {name, phone, pincode, state, city, houseno, area, select,customerId} = req.body;
+
+        if(!name && !phone && !pincode && !state && !city && !houseno && !area && !select) {
+            return res.status(400).json({ success: false, message: "All required"});
+        }
+
+        const address = new AddressCarts({
+            customerId,
+            name,
+            phone,
+            pincode,
+            state,
+            city,
+            house: houseno,
+            area,
+            select
+        });
+
+        const Address = await address.save();
+
+        if(Address) {
+            return res.status(200).json({ success: true, message: "Created Successfully", data: address});
+        } else {
+            return res.status(404).json({ success: false, message:" Created Not successfully"});
+        }
+
+    } catch(e) {
+        console.log(e);
+        return res.status(500).json({ success:false, message: e.message});
+    }
+};
+
+exports.UpdateAddressCart = async(req,res) => {
+    try {
+        const {name, phone, pincode, state, city, houseno, area, select,id} = req.body;
+
+        if(!name && !phone && !pincode && !state && !city && !houseno && !area && !select) {
+            return res.status(400).json({ success: false, message: "All required"});
+        }
+
+        const address = await AddressCarts.findById(id)
+;
+
+        if(!address) {
+            return res.status(404).json({ success: false, message: "Address Not found"});
+        }
+
+        address.name = name;
+        address.phone = phone;
+        address.pincode = pincode;
+        address.state = state;
+        address.city = city;
+        address.house = houseno;
+        address.area = area;
+        address.select = select;
+               
+        await address.save(); 
+       
+            return res.status(200).json({ success: true, message: "Updated Successfully", data: address});
+       
+    } catch(e) {
+        console.log(e);
+        return res.status(500).json({ success: false, message: e.message});
+    }
+};
+
+exports.DeleteAddressCart = async(req,res) => {
+    try {
+        const { id} = req.body;
+        if(!id) {
+            res.status(400).json({ success: false, message: "Requred!!"});
+        }
+
+        const address = await AddressCarts.findByIdAndDelete(id)
+;
+        if(address) {
+            return res.status(200).json({ success: true, message: "Deleted Successfully!!"});
+        }
+    } catch(e) {
+        console.log(e);
+        res.status(500).json({ success: false, message: e.message});
+    }
+};
+
+exports.GetAddressCart = async(req,res) => {
+    try {
+        const {customerId} = req.body;
+        if(!customerId) {
+            return res.status(400).json({ success: false, message: "Customer Id is Required."});
+        }
+
+        const AddressData = await AddressCarts.find({ customerId });
+        if(AddressData.length == 0 ){
+            return res.status(200).json({ success: true, message: "Address is Not found", data: []});
+        }
+
+        return res.status(200).json({ success: true, message: "Address data Successfully", data: AddressData });
+    } catch(e) {
+        console.log(e);
+        return res.status(500).json({ success: false, message: e.message});
+    }
+}
 
 
 
