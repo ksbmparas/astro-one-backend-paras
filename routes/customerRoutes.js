@@ -114,6 +114,8 @@ router.post('/search-customer' , customerController.searchCustomers);
 router.post('/send-wallet-request' , customerController.sendWalletRequest);
 router.post('/respond-wallet-request' , customerController.respondToWalletRequest);
 router.post('/get-wallet-request/:userId' , customerController.getWalletRequests);
+router.get('/get-All-wallet-history' , customerController.getAllWalletTransactionHistory);
+router.get('/get-All-request-history' , customerController.getWalletRequestHistory);
 
 
 module.exports = router;

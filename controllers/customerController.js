@@ -448,7 +448,7 @@ exports.customerLogin = async function (req, res) {
       customer.otp = otp;
       await customer.save();
     } else {
-      const referralCode = uuidv4();
+      const referralCode =  generateReferralCode();
       customer = new Customers({ phoneNumber, otp, referral_code: referralCode, referred_by });
       await customer.save();
       console.log('adsfasdf', referred_by);
@@ -1045,6 +1045,29 @@ exports.giftWalletBalance = async function (req, res) {
   }
 };
 
+exports.getAllWalletTransactionHistory = async function (req, res) {
+  try {
+    // Fetch all transactions and include customer details
+    const transactions = await WalletTransaction.find()
+      .populate('customerId', 'customerName') // Populates the `customerId` field with `name` from Customer model
+      .sort({ createdAt: -1 }); // Sort transactions by most recent
+
+    res.status(200).json({
+      success: true,
+      message: "All transaction history fetched successfully.",
+      transactions,
+    });
+  } catch (error) {
+    console.error("Error fetching all transaction history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch all transaction history.",
+      error: error.message,
+    });
+  }
+};
+
+
 exports.getWalletTransactionHistory = async function (req, res) {
   try {
     const { customerId } = req.params;
@@ -1057,12 +1080,23 @@ exports.getWalletTransactionHistory = async function (req, res) {
       });
     }
 
+    // Fetch customer details
+    const customer = await Customers.findById(customerId);
+    console.log("okay cust:" , customer.customerName)
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found.",
+      });
+    }
+
     // Fetch transaction history for the customer
     const transactions = await WalletTransaction.find({ customerId }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       message: "Transaction history fetched successfully.",
+      customerName: customer.customerName, // Include customer name
       transactions,
     });
   } catch (error) {
@@ -1074,6 +1108,7 @@ exports.getWalletTransactionHistory = async function (req, res) {
     });
   }
 };
+
 
 exports.sendWalletRequest = async (req, res) => {
   try {
@@ -1107,6 +1142,31 @@ exports.sendWalletRequest = async (req, res) => {
       res.status(500).json({ success: false, message: "Failed to send wallet request.", error: error.message });
   }
 };
+
+
+exports.getWalletRequestHistory = async (req, res) => {
+  try {
+    // Fetch all wallet requests and include requester and responder details
+    const walletRequests = await WalletRequest.find()
+      .populate('requesterId', 'customerName') // Fetch requester details
+      .populate('responderId', 'customerName') // Fetch responder details
+      .sort({ createdAt: -1 }); // Sort by most recent
+
+    res.status(200).json({
+      success: true,
+      message: "Wallet request history fetched successfully.",
+      requests: walletRequests,
+    });
+  } catch (error) {
+    console.error("Error fetching wallet request history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch wallet request history.",
+      error: error.message,
+    });
+  }
+};
+
 
 exports.respondToWalletRequest = async (req, res) => {
   try {
